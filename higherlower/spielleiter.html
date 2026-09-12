@@ -1,0 +1,613 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>Higher or Lower — Spielleiter</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@500;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../public-client.js"></script>
+<script src="../server-time.js?v=48"></script>
+
+<script src="../kern-render.js"></script>
+<script src="./categories.js"></script>
+<script src="../crew.js"></script>
+<style>
+  :root{
+    --bg:#080b16; --panel:#12172a; --panel2:#161f38; --border:#232b45;
+    --ink:#eef1f8; --muted:#8b96b3; --accent:#4ad9ff; --good:#3ddc84; --bad:#ff3860; --gold:#f5c542;
+    --ease:cubic-bezier(.22,.9,.32,1);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{min-height:100vh;}
+  body{background:radial-gradient(ellipse at 50% -10%, #12203a 0%, var(--bg) 60%);color:var(--ink);font-family:'Inter',sans-serif;padding:22px 16px 90px;}
+  .wrap{max-width:640px;margin:0 auto;}
+  h1{font-family:'Anton',sans-serif;font-size:34px;letter-spacing:1px;margin-bottom:4px;}
+  h1 span{color:var(--accent);}
+  .sub{color:var(--muted);font-size:14px;margin-bottom:20px;}
+
+  .card{background:linear-gradient(165deg,var(--panel2),var(--panel));border:1px solid var(--border);border-radius:16px;padding:18px;margin-bottom:16px;}
+  .card-label{font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-weight:800;margin-bottom:14px;}
+
+  select,input{width:100%;background:var(--panel);border:1px solid var(--border);color:var(--ink);padding:13px;border-radius:12px;font-size:15px;font-family:inherit;outline:none;}
+  select:focus,input:focus{border-color:var(--accent);}
+  .row{display:flex;gap:10px;}
+  .row > *{flex:1;}
+
+  button{border:none;border-radius:12px;padding:13px;font-weight:800;font-size:15px;cursor:pointer;font-family:inherit;transition:transform .12s,filter .2s;}
+  button:active{transform:scale(.97);}
+  .btn-primary{background:linear-gradient(135deg,var(--accent),#2ba9d4);color:#04121a;}
+  .btn-ghost{background:transparent;border:1px solid var(--border);color:var(--muted);}
+  .btn-good{background:linear-gradient(135deg,var(--good),#2bbf72);color:#04120c;}
+  .btn-bad{background:linear-gradient(135deg,var(--bad),#d62b4a);color:#fff;}
+
+  .cat-aktiv{display:flex;align-items:center;justify-content:space-between;gap:12px;background:rgba(74,217,255,.08);border:1px solid rgba(74,217,255,.3);border-radius:12px;padding:12px 14px;margin-top:12px;}
+  .cat-aktiv .nm{font-family:'Anton',sans-serif;font-size:18px;color:var(--accent);}
+
+  .add-row{display:flex;gap:8px;margin-bottom:14px;}
+  .add-row select{flex:1;}
+  .add-row button{flex:0 0 auto;padding:13px 18px;}
+
+  .players{display:flex;flex-direction:column;gap:10px;}
+  .prow{display:flex;align-items:center;gap:12px;background:#0d1424;border:1px solid var(--border);border-radius:12px;padding:10px 12px;}
+  .prow.dran{border-color:var(--good);box-shadow:0 0 20px -8px var(--good);}
+  .prow.tot{opacity:.45;}
+  .prow .av{width:40px;height:40px;border-radius:50%;object-fit:cover;background:#1b2138;flex-shrink:0;}
+  .prow .av-fb{width:40px;height:40px;border-radius:50%;background:#1b2138;display:flex;align-items:center;justify-content:center;font-family:'Anton',sans-serif;font-size:18px;color:var(--muted);flex-shrink:0;}
+  .prow .nm{font-weight:800;font-size:15px;flex:1;}
+  .prow .hearts{display:flex;gap:3px;}
+  .prow .hearts svg{width:18px;height:18px;}
+  .prow .hearts .full{color:var(--bad);}
+  .prow .hearts .empty{color:#2a3244;}
+  .prow .actions .rf-ok{background:rgba(34,197,94,.18);border-color:rgba(34,197,94,.5);color:#4ade80;font-weight:700;}
+  .prow .actions .rf-ok:hover:not(:disabled){background:rgba(34,197,94,.32);}
+  .prow .actions .rf-no{background:rgba(239,68,68,.18);border-color:rgba(239,68,68,.5);color:#f87171;font-weight:700;}
+  .prow .actions .rf-no:hover:not(:disabled){background:rgba(239,68,68,.32);}
+  .prow .actions button:disabled{opacity:.35;cursor:not-allowed;}
+  .playlist{margin-top:10px;display:flex;flex-direction:column;gap:6px;}
+  .pl-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:9px;
+           background:#0d1220;border:1px solid #232b45;}
+  .pl-item.aktiv{border-color:#22d3ee;background:rgba(34,211,238,.1);}
+  .pl-item.fertig{opacity:.5;}
+  .pl-item .pl-nr{font-weight:800;color:var(--muted);min-width:18px;}
+  .pl-item .pl-nm{flex:1;font-weight:600;}
+  .pl-item .pl-tag{font-size:11px;letter-spacing:1px;color:#22d3ee;font-weight:800;text-transform:uppercase;}
+  .pl-item .pl-tag.done{color:var(--muted);}
+  .prow .actions{display:flex;gap:6px;}
+  .prow .actions button{padding:8px 10px;font-size:13px;border-radius:9px;}
+  .prow .mini{background:#1b2138;color:var(--ink);border:1px solid var(--border);}
+  .prow .mini.dran-btn{background:var(--good);color:#04120c;border:none;}
+  .leer{color:var(--muted);text-align:center;padding:16px 0;font-size:14px;}
+</style>
+<link rel="stylesheet" href="../responsive.css" />
+</head>
+<body>
+<div class="wrap">
+  <h1>Higher or <span>Lower</span></h1>
+  <p class="sub">Steuerung — Kategorie starten, Leben und Zug verwalten.</p>
+
+  <div class="card">
+    <div class="card-label">Kategorie-Playlist</div>
+    <div class="row">
+      <select id="catSelect"></select>
+      <button class="btn-ghost" id="addCat">+ Hinzufügen</button>
+    </div>
+    <div id="playlistBox" class="playlist"></div>
+    <div class="row" style="margin-top:12px;">
+      <button class="btn-primary" id="startPlaylist">Playlist starten</button>
+      <button class="btn-primary" id="nextCat" style="display:none;">Nächste Kategorie →</button>
+      <button class="btn-ghost" id="clearCat">Karten leeren</button>
+      <button class="btn-ghost" id="resetPlaylist" style="border-color:rgba(239,68,68,.5);color:#f87171;">Playlist zurücksetzen</button>
+    </div>
+    <div class="row" style="margin-top:10px;align-items:center;gap:8px;">
+      <span style="font-size:13px;color:var(--muted);">Spiele insgesamt:</span>
+      <input type="number" id="spieleGesamt" min="1" max="20" value="4"
+             style="width:70px;padding:8px;border-radius:8px;
+                    background:#0d1220;border:1px solid #232b45;color:#eef1f8;">
+      <button class="btn-ghost mini" id="spielReset">Zähler auf 0</button>
+    </div>
+
+    <div class="row" style="margin-top:14px;align-items:center;gap:8px;">
+      <span style="font-size:13px;color:var(--muted);">Timer:</span>
+      <input type="number" id="timerLen" min="5" max="120" value="30"
+             style="width:70px;padding:8px;border-radius:8px;
+                    background:#0d1220;border:1px solid #232b45;color:#eef1f8;">
+      <span style="font-size:13px;color:var(--muted);">Sek.</span>
+      <button class="btn-primary mini" id="timerStart">Timer starten</button>
+      <button class="btn-ghost mini" id="timerStop">Stopp</button>
+    </div>
+
+    <div id="catAktiv"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-label">Spieler</div>
+    <div class="add-row" style="display:none">
+      <select id="addSelect"></select>
+      <button class="btn-primary" id="addBtn">Hinzufügen</button>
+    </div>
+    <div class="add-row" style="display:none">
+      <input id="manualName" type="text" maxlength="32" placeholder="Spielername manuell eingeben…" autocomplete="off">
+      <button class="btn-ghost" id="manualAddBtn">+ Spieler</button>
+    </div>
+    <div class="players" id="players"><div class="leer">Noch keine Spieler.</div></div>
+  </div>
+</div>
+
+<script>
+const sb = window.KA_SB;
+const START_LEBEN = 3;
+let hlActionBusy = false;
+let state = { players: [], turnName: null, category: null, poolItems: [],
+              spiel: 0, spieleGesamt: 4,
+              playlist: [], playlistIndex: -1,
+              rundeStartName: null, falschInRunde: [], gespieltInRunde: [] };
+
+function heartSvg(full){
+  return `<svg class="${full?'full':'empty'}" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-6.72-4.35-9.35-8.42C1.02 9.92 1.94 6.5 4.87 5.06 7 4.02 9.5 4.64 12 7c2.5-2.36 5-2.98 7.13-1.94 2.93 1.44 3.85 4.86 2.2 7.52C18.72 16.65 12 21 12 21Z"/></svg>`;
+}
+
+async function speichern(){
+  state.updated = KA_NOW();
+  render();   // sofort aktualisieren, nicht erst beim Realtime-Rueckkanal
+  await sb.from('hl_state').update({ state, updated_at: new Date().toISOString() }).eq('id', 1);
+}
+
+async function ladeState(){
+  const { data } = await sb.from('hl_state').select('state').eq('id',1).single();
+  if(data && data.state && Object.keys(data.state).length){
+    state = Object.assign({ players:[], turnName:null, category:null, poolItems:[] }, data.state);
+  }
+  render();
+}
+
+sb.channel('hl_state_channel_sl')
+  .on('postgres_changes', { event:'*', schema:'public', table:'hl_state' }, payload=>{
+    const neu = payload.new.state || {};
+    state = Object.assign({ players:[], turnName:null, category:null, poolItems:[] }, neu);
+    render();
+  }).subscribe();
+
+function fuelleKategorien(){
+  const sel = document.getElementById('catSelect');
+  sel.innerHTML = CATEGORIES.map((c,i)=>`<option value="${i}">${c.name}</option>`).join('');
+}
+
+function fuelleNamen(){
+  const sel = document.getElementById('addSelect');
+  const drin = new Set(state.players.map(p=>p.name));
+  const alle = crewNames();
+  const frei = alle.filter(n=>!drin.has(n));
+  sel.innerHTML = frei.length
+    ? frei.map(n=>`<option value="${n}">${n}</option>`).join('')
+    : '<option value="">— alle drin —</option>';
+}
+
+
+async function syncPublicPlayers(){
+  try{
+    const {data,error}=await sb.rpc('hl_sync_public_players');
+    if(error){ console.warn('hl player sync:', error); return; }
+    if(data && typeof data === 'object'){
+      state=Object.assign({players:[],turnName:null,category:null,poolItems:[]},data);
+      render();
+    }
+  }catch(e){ console.warn('hl player sync:', e); }
+}
+setInterval(syncPublicPlayers,1800); setTimeout(syncPublicPlayers,500);
+
+function avatarBild(name){
+  const url = (typeof avatarFor === 'function') ? avatarFor(name) : null;
+  if(url) return `<img class="av" src="${url}" alt="">`;
+  return `<div class="av-fb">${name?name[0].toUpperCase():'?'}</div>`;
+}
+
+function mischen(arr){
+  const a = arr.slice();
+  for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+  return a;
+}
+
+// Eine Kategorie (per Index in CATEGORIES) ins Spiel laden
+function ladeKategorieInState(catIdx){
+  const cat = CATEGORIES[catIdx];
+  if(!cat) return false;
+  state.category = { name: cat.name, unit: cat.unit || '' };
+  state.poolItems = mischen(cat.items).map(it=>({ url: it.url, label: it.label }));
+  state.kartenPos = {};                 // Positionen zuruecksetzen
+  state.spiel = (state.spiel || 0) + 1;
+  // Neue Kategorie -> Leben & Runden frisch
+  state.players.forEach(p=>{ p.lives = START_LEBEN; p.score = Number(p.score||0); });
+  state.turnName = state.players[0] ? state.players[0].name : null;
+  state.rundeLebende = null; state.gespieltInRunde = []; state.falschInRunde = [];
+  state.kategorieFertig = false; state.gewinner = null;
+  // Signal fuer den Host, das Wechsel-Overlay zu zeigen
+  state.wechselAnzeige = { name: cat.name, ts: KA_NOW() };
+  return true;
+}
+
+// Kategorie zur Playlist hinzufuegen
+document.getElementById('addCat').onclick = async ()=>{
+  const idx = parseInt(document.getElementById('catSelect').value,10);
+  const cat = CATEGORIES[idx];
+  if(!cat) return;
+  if(!state.playlist) state.playlist = [];
+  state.playlist.push({ catIdx: idx, name: cat.name });
+  await speichern();
+};
+
+// Playlist starten: erste Kategorie laden
+document.getElementById('startPlaylist').onclick = async ()=>{
+  if(!state.playlist || !state.playlist.length){
+    alert('Erst Kategorien zur Playlist hinzufügen.');
+    return;
+  }
+  state.playlistIndex = 0;
+  ladeKategorieInState(state.playlist[0].catIdx);
+  await speichern();
+};
+
+// Naechste Kategorie in der Playlist
+document.getElementById('nextCat').onclick = async ()=>{
+  if(!state.playlist || !state.playlist.length) return;
+  const naechster = (state.playlistIndex ?? -1) + 1;
+  if(naechster >= state.playlist.length){
+    // Playlist zu Ende
+    state.category = null;
+    state.poolItems = [];
+    state.playlistFertig = { ts: KA_NOW() };
+    await speichern();
+    alert('Das war die letzte Kategorie der Playlist.');
+    return;
+  }
+  state.playlistIndex = naechster;
+  ladeKategorieInState(state.playlist[naechster].catIdx);
+  await speichern();
+};
+
+// Playlist komplett zuruecksetzen: leert Playlist, Index und die laufende
+// Kategorie. Danach kann man frisch neue Kategorien hinzufuegen.
+document.getElementById('resetPlaylist').onclick = async ()=>{
+  if(!confirm('Playlist komplett zurücksetzen? Alle Kategorien werden entfernt.')) return;
+  state.playlist = [];
+  state.playlistIndex = -1;
+  state.category = null;
+  state.poolItems = [];
+  state.kartenPos = {};
+  state.spiel = 0;
+  state.kategorieFertig = false;
+  state.gewinner = null;
+  state.playlistFertig = null;
+  state.wechselAnzeige = null;
+  await speichern();
+};
+
+document.getElementById('spieleGesamt').onchange = async (e)=>{
+  const n = parseInt(e.target.value, 10);
+  if(n >= 1 && n <= 20){ state.spieleGesamt = n; await speichern(); }
+};
+
+document.getElementById('spielReset').onclick = async ()=>{
+  state.spiel = 0;
+  await speichern();
+};
+
+// Timer starten: Endzeitpunkt in den State schreiben, Host rendert daraus.
+document.getElementById('timerStart').onclick = async ()=>{
+  if(window.KA_TIME && KA_TIME.ready) await KA_TIME.ready;
+  const inp = document.getElementById('timerLen');
+  const len = Math.max(5, Math.min(120, parseInt(inp.value, 10) || 30));
+  state.timerLen = len;
+  state.timerEnde = KA_NOW() + len * 1000;
+  await speichern();
+};
+document.getElementById('timerStop').onclick = async ()=>{
+  state.timerEnde = null;
+  await speichern();
+};
+
+document.getElementById('clearCat').onclick = async ()=>{
+  state.category = null;
+  state.poolItems = [];
+  await speichern();
+};
+
+async function spielerHinzufuegen(name){
+  name = String(name || '').trim();
+  if(!name) return;
+  if(name.length > 32){
+    alert('Der Spielername darf maximal 32 Zeichen lang sein.');
+    return;
+  }
+  if(state.players.some(p => p.name.toLowerCase() === name.toLowerCase())){
+    alert('Dieser Spieler ist bereits hinzugefügt.');
+    return;
+  }
+  state.players.push({ name, lives: START_LEBEN, score: 0 });
+  if(!state.turnName) state.turnName = name;
+  await speichern();
+}
+
+document.getElementById('addBtn').onclick = async ()=>{
+  await spielerHinzufuegen(document.getElementById('addSelect').value);
+};
+
+const manualNameEl = document.getElementById('manualName');
+document.getElementById('manualAddBtn').onclick = async ()=>{
+  const name = manualNameEl.value;
+  await spielerHinzufuegen(name);
+  if(name.trim() && !state.players.some(p => p.name === name.trim())) return;
+  manualNameEl.value = '';
+  manualNameEl.focus();
+};
+manualNameEl.addEventListener('keydown', async (e)=>{
+  if(e.key === 'Enter'){
+    e.preventDefault();
+    document.getElementById('manualAddBtn').click();
+  }
+});
+
+async function lebenAendern(name, delta){
+  const p = state.players.find(x=>x.name===name);
+  if(!p) return;
+  p.lives = Math.max(0, Math.min(START_LEBEN, p.lives + delta));
+  await speichern();
+}
+
+// --- Lebende Spieler in fester Reihenfolge (fuer Zug + Runde) ---
+function lebende(){ return state.players.filter(p=>p.lives > 0); }
+
+// Naechsten dran finden - unter denen, die zu Rundenbeginn lebten und
+// noch nicht dran waren; sonst zyklisch unter den aktuell Lebenden.
+function naechsterDran(name){
+  // Bevorzugt jemand aus der aktuellen Runde, der noch nicht dran war
+  const offen = (state.rundeLebende || []).filter(n =>
+    !state.gespieltInRunde.includes(n)
+  );
+  if(offen.length) return offen[0];
+  const leb = lebende();
+  if(!leb.length) return null;
+  const idx = leb.findIndex(p=>p.name===name);
+  return leb[(idx+1) % leb.length].name;
+}
+
+// Runde initialisieren, falls noch keine laeuft
+function startRundeFalls(){
+  if(!state.rundeLebende || !state.rundeLebende.length ||
+     state.gespieltInRunde.length === 0){
+    // Wer lebt zu Beginn dieser Runde?
+    state.rundeLebende = lebende().map(p=>p.name);
+    state.rundeStartLeben = {};
+    lebende().forEach(p=>{ state.rundeStartLeben[p.name] = p.lives; });
+    state.gespieltInRunde = [];
+    state.falschInRunde = [];
+  }
+}
+
+// Prueft, ob die Runde komplett ist (jeder, der zu Rundenbeginn lebte,
+// war dran) und wendet die Comeback-Regel an.
+function pruefeRundenEnde(){
+  const rundenSpieler = state.rundeLebende || [];
+  const alleGespielt = rundenSpieler.every(n => state.gespieltInRunde.includes(n));
+  if(!alleGespielt) return;
+
+  // Comeback: Hatten ALLE Rundenspieler zu Rundenbeginn nur 1 Leben
+  // UND lagen ALLE in dieser Runde falsch?
+  const alleHatten1 = rundenSpieler.length > 1 &&
+    rundenSpieler.every(n => (state.rundeStartLeben[n] || 0) === 1);
+  const alleFalsch = rundenSpieler.every(n => state.falschInRunde.includes(n));
+
+  if(alleHatten1 && alleFalsch){
+    // Jeder Rundenspieler bekommt 1 Leben zurueck (Showdown-Rettung)
+    state.players.forEach(p=>{
+      if(rundenSpieler.includes(p.name)){
+        p.lives = Math.min(START_LEBEN, Math.max(p.lives, 0) + 1);
+      }
+    });
+    state.showdownHinweis = KA_NOW();
+  }
+  // Neue Runde vorbereiten
+  state.gespieltInRunde = [];
+  state.falschInRunde = [];
+  state.rundeLebende = null;   // wird beim naechsten Zug neu gesetzt
+    state._scoreAwardedForTurn = false
+}
+
+// RICHTIG: Spieler bleibt, naechster ist dran
+async function antwortRichtig(name){
+  if(hlActionBusy) return;
+  // Nur der aktuell aktive Spieler darf die Aktion ausloesen. Dadurch
+  // kann ein Doppelklick dieselbe Runde nicht zweimal werten, waehrend
+  // trotzdem JEDER Spieler seinen eigenen gewonnenen Zug als +1 bekommt.
+  if(name !== state.turnName) return;
+  hlActionBusy = true;
+  startRundeFalls();
+  if(!state.gespieltInRunde.includes(name)) state.gespieltInRunde.push(name);
+  const p = state.players.find(x=>x.name===name);
+  if(p) p.score = Number(p.score||0) + 1;
+  state.turnName = naechsterDran(name);
+  pruefeRundenEnde();
+  try {
+    await speichern();
+    await pruefeKategorieEnde();
+  } finally { hlActionBusy = false; }
+}
+
+// FALSCH: Spieler verliert 1 Leben, wird als "falsch" markiert
+async function antwortFalsch(name){
+  if(hlActionBusy) return;
+  if(name !== state.turnName) return;
+  hlActionBusy = true;
+  startRundeFalls();
+  const p = state.players.find(x=>x.name===name);
+  if(!p) return;
+  p.lives = Math.max(0, p.lives - 1);
+  if(!state.gespieltInRunde.includes(name)) state.gespieltInRunde.push(name);
+  if(!state.falschInRunde.includes(name)) state.falschInRunde.push(name);
+  state.turnName = naechsterDran(name);
+  pruefeRundenEnde();
+  try {
+    await speichern();
+    await pruefeKategorieEnde();
+  } finally { hlActionBusy = false; }
+}
+
+// Kategorie zu Ende, wenn nur noch einer (oder keiner) lebt
+async function pruefeKategorieEnde(){
+  const leb = lebende();
+  if(leb.length <= 1){
+    state.kategorieFertig = true;
+    state.gewinner = leb[0] ? leb[0].name : null;
+    await speichern();
+  }
+}
+
+async function setzeDran(name){
+  state.turnName = name;
+  await speichern();
+}
+
+async function entfernen(name){
+  state.players = state.players.filter(p=>p.name!==name);
+  state.rundeLebende = (state.rundeLebende || []).filter(n=>n!==name);
+  state.gespieltInRunde = (state.gespieltInRunde || []).filter(n=>n!==name);
+  state.falschInRunde = (state.falschInRunde || []).filter(n=>n!==name);
+  if(state.rundeStartLeben) delete state.rundeStartLeben[name];
+  if(state.turnName === name) state.turnName = state.players.find(p=>p.lives>0)?.name || state.players[0]?.name || null;
+  try { await sb.rpc('deactivate_public_player', { p_name:name, p_format:'higherlower' }); } catch(e) {}
+  await speichern();
+}
+
+function render(){
+  const sg = document.getElementById('spieleGesamt');
+  if(sg && state.spieleGesamt && document.activeElement !== sg) sg.value = state.spieleGesamt;
+
+  const catBox = document.getElementById('catAktiv');
+  if(state.category){
+    catBox.innerHTML = `<div class="cat-aktiv"><span class="nm">${state.category.name}</span><span style="color:var(--muted);font-size:13px;">${state.poolItems.length} Karten aktiv</span></div>`;
+  } else {
+    catBox.innerHTML = '';
+  }
+
+  // Playlist-Liste rendern
+  const plBox = document.getElementById('playlistBox');
+  if(plBox){
+    const pl = state.playlist || [];
+    if(!pl.length){
+      plBox.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px 0;">Noch keine Kategorien in der Playlist.</div>';
+    } else {
+      plBox.innerHTML = pl.map((c,i)=>{
+        const aktiv = i === state.playlistIndex;
+        const fertig = i < (state.playlistIndex ?? -1);
+        return `<div class="pl-item ${aktiv?'aktiv':''} ${fertig?'fertig':''}">
+          <span class="pl-nr">${i+1}</span>
+          <span class="pl-nm">${c.name}</span>
+          ${aktiv?'<span class="pl-tag">läuft</span>':(fertig?'<span class="pl-tag done">fertig</span>':`<button class="mini" data-plrm="${i}">✕</button>`)}
+        </div>`;
+      }).join('');
+      plBox.querySelectorAll('[data-plrm]').forEach(b=>b.onclick=async()=>{
+        state.playlist.splice(parseInt(b.dataset.plrm,10),1);
+        await speichern();
+      });
+    }
+  }
+
+  // Start- vs Weiter-Button: läuft die Playlist schon?
+  const laeuft = (state.playlistIndex ?? -1) >= 0 && state.category;
+  const startBtn = document.getElementById('startPlaylist');
+  const nextBtn = document.getElementById('nextCat');
+  if(startBtn && nextBtn){
+    startBtn.style.display = laeuft ? 'none' : '';
+    nextBtn.style.display = laeuft ? '' : 'none';
+  }
+
+  KA_CREW_READY.then(fuelleNamen);
+
+  const box = document.getElementById('players');
+  if(!state.players.length){
+    box.innerHTML = '<div class="leer">Noch keine Spieler.</div>';
+    return;
+  }
+
+  spielerListe.render(state.players);
+}
+
+// Spieler-Zeilen ruhig verwalten: Avatar-<img> wird nur beim ersten
+// Anlegen erzeugt, danach aendern sich nur Herzen/Klassen/Buttons -
+// kein Neuladen der Bilder bei jedem Realtime-Tick mehr.
+const spielerListe = KernRender.liste(document.getElementById('players'), {
+  schluessel: p => p.name,
+  erstellen: p => {
+    const el = document.createElement('div');
+    el.className = 'prow';
+    el.innerHTML = `
+      ${avatarBild(p.name)}
+      <span class="nm"></span>
+      <span class="hearts"></span>
+      <span class="actions">
+        <button class="mini rf-ok" data-ok="${p.name}">✓ Richtig</button>
+        <button class="mini rf-no" data-no="${p.name}">✗ Falsch</button>
+        <button class="mini" data-minus="${p.name}">−</button>
+        <button class="mini" data-plus="${p.name}">+</button>
+        <button class="mini dran-btn" data-dran="${p.name}">Dran</button>
+        <button class="mini" data-del="${p.name}">✕</button>
+      </span>`;
+    el.querySelector('[data-ok]').onclick = () => antwortRichtig(p.name);
+    el.querySelector('[data-no]').onclick = () => antwortFalsch(p.name);
+    el.querySelector('[data-minus]').onclick = () => lebenAendern(p.name, -1);
+    el.querySelector('[data-plus]').onclick = () => lebenAendern(p.name, 1);
+    el.querySelector('[data-dran]').onclick = () => setzeDran(p.name);
+    el.querySelector('[data-del]').onclick = () => entfernen(p.name);
+    return el;
+  },
+  aktualisieren: (el, p) => {
+    const tot = p.lives <= 0;
+    const dran = p.name === state.turnName && !tot;
+    el.className = `prow ${dran ? 'dran' : ''} ${tot ? 'tot' : ''}`;
+    KernRender.textWennGeaendert(el.querySelector('.nm'), p.name);
+    const heartsHtml = Array.from({length: START_LEBEN}, (_, i) => heartSvg(i < p.lives)).join('');
+    const heartsEl = el.querySelector('.hearts');
+    if(heartsEl.dataset.leben !== String(p.lives)){
+      heartsEl.innerHTML = heartsHtml;
+      heartsEl.dataset.leben = String(p.lives);
+    }
+    el.querySelector('[data-ok]').disabled = tot;
+    el.querySelector('[data-no]').disabled = tot;
+  }
+});
+
+fuelleKategorien();
+ladeState();
+</script>
+<script src="../zurueck.js"></script>
+<script src="../hintergrund.js"></script>
+
+
+
+<script>
+  if(window.SpielBeenden) SpielBeenden.init({
+    format: 'higherlower',
+    sammle: async function () {
+      const { data } = await sb.from('hl_state').select('state').eq('id', 1).single();
+      const players = (data && data.state && data.state.players) || [];
+      return players.map(function (p) {
+        return { spieler: p.name, punkte: Number(p.score||0) };
+      });
+    }
+  });
+</script>
+
+<script>
+// Turnier: Rolle merken und auf Formatwechsel horchen.
+// Schaltet der Spielleiter weiter, springt dieses Geraet mit.
+if(window.TURNIER){
+  TURNIER.setzeRolle('sl');
+  TURNIER.starte(typeof sb !== "undefined" ? sb : null);
+}
+</script>
+<script src="../active-stream-mode.js?v=48"></script>
+</body>
+</html>

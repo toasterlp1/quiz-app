@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Quiz App – OBS Stream</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./public-client.js"></script>
+<style>
+  html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#02040a;color:#fff;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+  #stage{position:fixed;inset:0;background:#02040a}
+  #view{position:absolute;inset:0;width:100%;height:100%;border:0;background:#02040a;opacity:0;transition:opacity .28s ease}
+  #view.ready{opacity:1}
+  #wait{position:absolute;inset:0;display:grid;place-items:center;background:radial-gradient(circle at 50% 42%,#101a31 0,#060a13 38%,#02040a 72%);transition:opacity .25s ease}
+  #wait.hide{opacity:0;pointer-events:none}
+  .waitbox{text-align:center;opacity:.78}
+  .mark{width:56px;height:56px;border-radius:18px;margin:0 auto 16px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);box-shadow:0 20px 80px rgba(0,0,0,.45);display:grid;place-items:center;font-size:26px}
+  .title{font-weight:900;letter-spacing:.04em;font-size:18px}.sub{margin-top:7px;color:#8d98af;font-size:12px}
+  #error{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);padding:9px 13px;border-radius:10px;background:rgba(128,18,35,.84);font-size:12px;font-weight:800;display:none}
+</style>
+</head>
+<body>
+<div id="stage">
+  <iframe id="view" title="Streamansicht" allow="autoplay"></iframe>
+  <div id="wait"><div class="waitbox"><div class="mark">◈</div><div class="title">Warte auf Spielmodus</div><div class="sub">Die OBS-Quelle kann dauerhaft auf dieser Seite bleiben.</div></div></div>
+  <div id="error">Stream-Modus konnte nicht geladen werden.</div>
+</div>
+<script>
+(function(){
+  'use strict';
+  const sb=window.KA_SB;
+  const frame=document.getElementById('view');
+  const wait=document.getElementById('wait');
+  const err=document.getElementById('error');
+  const routes={
+    quizduell:'./quizduell/?rolle=host&stream=1',
+    hotzone:'./hotzone/host.html?stream=1',
+    higherlower:'./higherlower/host.html?stream=1',
+    emoji:'./emoji/host.html?stream=1',
+    weristdas:'./weristdas/host.html?stream=1',
+    morph:'./morph/host.html?stream=1',
+    millionaer:'./millionaer/host.html?stream=1',
+    'bluff-quiz':'./bluff-quiz/host.html?stream=1',
+    ausreden:'./ausreden/host.html?stream=1',
+    blackstories:'./blackstories/host.html?stream=1',
+    imposter:'./imposter/host.html?stream=1'
+  };
+  let current='';
+  let poll=null;
+
+  function showError(show){err.style.display=show?'block':'none'}
+  function apply(mode){
+    mode=String(mode||'').trim();
+    const src=routes[mode];
+    if(!src){
+      current='';
+      frame.classList.remove('ready');
+      wait.classList.remove('hide');
+      return;
+    }
+    if(mode===current) return;
+    current=mode;
+    showError(false);
+    frame.classList.remove('ready');
+    wait.classList.remove('hide');
+    frame.src=src;
+  }
+  frame.addEventListener('load',()=>{
+    if(!current) return;
+    frame.classList.add('ready');
+    wait.classList.add('hide');
+    showError(false);
+  });
+
+  async function load(){
+    if(!sb) return;
+    const {data,error}=await sb.from('active_stream_state').select('mode,updated_at').eq('id',1).maybeSingle();
+    if(error){ console.warn('Streammodus laden:',error); showError(true); return; }
+    apply(data?.mode||'');
+  }
+
+  async function boot(){
+    await load();
+    try{
+      sb.channel('active-stream-overlay')
+        .on('postgres_changes',{event:'UPDATE',schema:'public',table:'active_stream_state',filter:'id=eq.1'},p=>apply(p.new?.mode||''))
+        .subscribe(status=>{ if(status==='CHANNEL_ERROR'||status==='TIMED_OUT') showError(true); });
+    }catch(e){ console.warn(e); }
+    poll=setInterval(load,2500);
+    document.addEventListener('visibilitychange',()=>{ if(!document.hidden) load(); });
+    window.addEventListener('online',load);
+  }
+  boot();
+})();
+</script>
+</body>
+</html>

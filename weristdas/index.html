@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>Wer ist das?</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@500;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0e1a; --panel:#12172a; --panel2:#161f38; --border:#232b45;
+    --ink:#eef1f8; --muted:#7a86a3; --accent:#00e5c7; --warn:#ffd166; --bad:#ff3860;
+    --ease:cubic-bezier(.22,.9,.32,1); --ease-out:cubic-bezier(.16,1,.3,1);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;}
+  body{
+    background:radial-gradient(ellipse at 50% -10%, #10182f 0%, var(--bg) 68%);
+    color:var(--ink);font-family:'Inter',sans-serif;overflow:hidden;
+    min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:44px;padding:30px;
+  }
+
+  .marks{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none;}
+  .mark{
+    position:absolute;bottom:-40px;color:rgba(0,229,199,.14);
+    font-family:'Anton',sans-serif;animation:rise linear infinite;
+  }
+  @keyframes rise{
+    0%{transform:translateY(0) rotate(0deg);opacity:0;}
+    10%{opacity:1;}90%{opacity:.7;}
+    100%{transform:translateY(-112vh) rotate(var(--rot,20deg));opacity:0;}
+  }
+  body::before{
+    content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+    background-image:radial-gradient(rgba(255,255,255,.04) 1px, transparent 1px);
+    background-size:24px 24px;
+  }
+
+  .wrap{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;gap:44px;}
+  .logo{
+    font-family:'Anton',sans-serif;font-size:clamp(38px,8vw,72px);letter-spacing:4px;line-height:.95;
+    text-align:center;color:var(--ink);text-shadow:0 0 26px rgba(0,229,199,.4);
+    animation:riseIn .6s var(--ease-out) both;
+  }
+  .sub{font-size:12px;letter-spacing:5px;text-transform:uppercase;color:var(--muted);font-weight:700;margin-top:10px;text-align:center;animation:riseIn .6s var(--ease-out) .1s both;}
+  .rule{width:min(300px,80vw);height:3px;border-radius:3px;margin-top:14px;
+    background:var(--accent);opacity:.7;box-shadow:0 0 18px rgba(0,229,199,.5);
+    animation:riseIn .6s var(--ease-out) .15s both;}
+
+  .roles{display:flex;gap:20px;flex-wrap:wrap;justify-content:center;}
+  .role{
+    position:relative;width:230px;padding:30px 24px;border-radius:18px;text-decoration:none;color:var(--ink);
+    background:linear-gradient(160deg,var(--panel2),var(--panel));border:1px solid var(--border);
+    display:flex;flex-direction:column;align-items:center;gap:12px;overflow:hidden;
+    transition:transform .4s var(--ease-out),border-color .35s var(--ease),box-shadow .35s var(--ease);
+    animation:riseIn .6s var(--ease-out) both;
+  }
+  .role:nth-child(1){animation-delay:.20s;}
+  .role:nth-child(2){animation-delay:.28s;}
+  .role:nth-child(3){animation-delay:.36s;}
+  .role::before{content:'';position:absolute;top:0;left:0;width:100%;height:3px;background:var(--rc);opacity:.9;}
+  .role .ic{width:52px;height:52px;color:var(--rc);filter:drop-shadow(0 0 12px var(--rc));}
+  .role .ic svg{width:100%;height:100%;}
+  .role h3{font-family:'Anton',sans-serif;font-size:22px;letter-spacing:1px;text-transform:uppercase;}
+  .role p{color:var(--muted);font-size:13px;text-align:center;line-height:1.5;}
+  .role:hover{transform:translateY(-6px);border-color:var(--rc);box-shadow:0 18px 50px -20px var(--rc);}
+  .role:active{transform:translateY(-3px) scale(.98);}
+  .role.host{--rc:var(--accent);}
+  .role.master{--rc:var(--warn);}
+  .role.buzz{--rc:var(--bad);}
+
+  @keyframes riseIn{from{opacity:0;transform:translateY(18px);}to{opacity:1;transform:translateY(0);}}
+  @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;}}
+  @media(max-width:720px){.roles{gap:14px;}.role{width:min(80vw,260px);}}
+</style>
+<link rel="stylesheet" href="../responsive.css" />
+</head>
+<body>
+<div class="marks" id="marks" aria-hidden="true"></div>
+
+<div class="wrap">
+  <div style="display:flex;flex-direction:column;align-items:center;">
+    <div class="logo">WER IST DAS?</div>
+    <div class="rule"></div>
+  </div>
+
+  <div class="roles">
+    <a class="role host" href="./host.html">
+      <h3>Host + Buzzer</h3>
+    </a>
+    <a class="role master" href="./spielleiter.html">
+      <h3>Spielleiter</h3>
+    </a>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../public-client.js"></script>
+<script src="../crew.js"></script>
+<script>
+  var m = document.getElementById('marks');
+  for(var i=0;i<14;i++){
+    var s = document.createElement('div');
+    s.className = 'mark';
+    var sz = 20 + Math.random()*38;
+    s.textContent = '?';
+    s.style.fontSize = sz+'px';
+    s.style.left = (Math.random()*100)+'vw';
+    s.style.setProperty('--rot',(Math.random()*40-20)+'deg');
+    s.style.animationDuration = (9+Math.random()*10)+'s';
+    s.style.animationDelay = (-Math.random()*18)+'s';
+    m.appendChild(s);
+  }
+</script>
+<script src="../zurueck.js"></script>
+<script src="../hintergrund.js"></script>
+</body>
+</html>

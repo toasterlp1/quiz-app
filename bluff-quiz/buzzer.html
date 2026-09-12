@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>Bluff-Quiz — Buzzer</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@500;700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../eingabeschutz.js"></script>
+<script src="../public-client.js"></script>
+
+<script src="../crew.js"></script>
+<style>
+  :root{
+    --bg:#0a0f1e; --panel:#111a30; --panel-border:#1e2a4a;
+    --ink:#eef1f8; --muted:#8b96b3; --accent:#a855f7; --good:#3ddc84;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;}
+  body{
+    background:var(--bg);color:var(--ink);font-family:'Inter',sans-serif;
+    display:flex;align-items:center;justify-content:center;padding:20px;
+  }
+  .wrap{width:100%;max-width:460px;}
+  h1{font-family:'Anton',sans-serif;letter-spacing:2px;font-size:24px;text-align:center;margin:0 0 20px;}
+  .hinweis{
+    font-size:11px;text-transform:uppercase;letter-spacing:2px;
+    color:var(--accent);font-weight:800;text-align:center;margin-bottom:8px;
+  }
+  .frage{
+    font-family:'Anton',sans-serif;font-size:clamp(22px,5.5vw,30px);
+    line-height:1.3;text-align:center;margin-bottom:24px;
+  }
+  select, input[type=text]{
+    width:100%;background:#0d1220;border:1px solid var(--panel-border);color:var(--ink);
+    padding:14px;border-radius:12px;font-size:16px;margin-bottom:10px;text-align:center;
+    outline:none;font-family:'Inter',sans-serif;
+  }
+  select:focus, input[type=text]:focus{border-color:var(--accent);}
+  button.gross{
+    width:100%;padding:15px;border:none;border-radius:12px;background:var(--accent);
+    color:#fff;font-weight:900;font-size:16px;cursor:pointer;letter-spacing:1px;
+  }
+  button.gross:disabled{opacity:.4;cursor:not-allowed;}
+  .option{
+    background:var(--panel);border:2px solid var(--panel-border);border-radius:12px;
+    padding:15px;margin-bottom:10px;cursor:pointer;font-size:16px;font-weight:700;
+    transition:border-color .15s, background .15s;text-align:center;
+  }
+  .option:hover{border-color:var(--accent);}
+  .option.echt{border-color:var(--good);background:rgba(61,220,132,.12);}
+  .info{color:var(--muted);text-align:center;padding:36px 0;font-size:15px;line-height:1.6;}
+  .info b{color:var(--ink);}
+  .aufl{
+    background:var(--panel);border:1px solid var(--good);border-radius:12px;
+    padding:18px;margin-top:14px;text-align:center;
+  }
+  .aufl .l{font-size:11px;text-transform:uppercase;letter-spacing:2px;color:var(--good);font-weight:800;margin-bottom:6px;}
+  .aufl .w{font-family:'Anton',sans-serif;font-size:22px;}
+</style>
+<link rel="stylesheet" href="../responsive.css" />
+<link rel="stylesheet" href="../show-camera.css">
+</head>
+<body>
+<div class="wrap" id="app">
+  <div class="info">Warte auf Spielleiter…</div>
+</div>
+
+<script>
+const sb = window.KA_SB;
+const app = document.getElementById('app');
+
+let runde = null;
+let ich = sessionStorage.getItem('bl_name') || '';
+let meineLuege = null;
+let meineStimme = null;
+
+const mische = a => a.map(v => [Math.random(), v]).sort((x,y) => x[0]-y[0]).map(p => p[1]);
+
+function nameWahl(){
+  app.innerHTML =
+    '<h1>BLUFF-QUIZ</h1>' +
+    '<input id="nameSel" type="text" maxlength="32" autocomplete="nickname" placeholder="Dein Name" aria-label="Dein Name">' +
+    '<button class="gross" id="joinBtn">Beitreten</button>';
+  const input = document.getElementById('nameSel');
+  const join = async () => {
+    const v = window.KA_PUBLIC.normalizeName(input.value);
+    if(!v) return;
+    const reg = await window.KA_PUBLIC.registerPlayer(v, 'bluff-quiz');
+    if(!reg.ok) return;
+    ich = v;
+    sessionStorage.setItem('bl_name', v);
+    ladeRunde();
+  };
+  document.getElementById('joinBtn').onclick = join;
+  input.addEventListener('keydown', e => { if(e.key === 'Enter') join(); });
+}
+
+async function ladeRunde(){
+  if(!ich){ nameWahl(); return; }
+
+  const { data } = await sb.from('bluff_runden')
+    .select('*').order('erstellt', { ascending:false }).limit(1).maybeSingle();
+  runde = data;
+
+  if(!runde){ app.innerHTML = '<div class="info">Warte auf Spielleiter…</div>'; return; }
+
+  const l = await sb.from('bluff_luegen')
+    .select('*').eq('runde_id', runde.id).eq('spieler', ich).maybeSingle();
+  meineLuege = l.data;
+
+  const s = await sb.from('bluff_stimmen')
+    .select('*').eq('runde_id', runde.id).eq('spieler', ich).maybeSingle();
+  meineStimme = s.data;
+
+  await zeichne();
+}
+
+async function zeichne(){
+  const kopf = '<div class="hinweis">Bluff-Quiz</div><div class="frage">' + runde.frage + '</div>';
+
+  if(runde.phase === 'luegen'){
+    if(meineLuege){
+      app.innerHTML = kopf +
+        '<div class="info">Lüge abgegeben:<br><b>' + meineLuege.text + '</b><br><br>Warte auf die anderen.</div>';
+      return;
+    }
+    app.innerHTML = kopf +
+      '<input type="text" id="luegeInput" placeholder="Deine erfundene Antwort" autocomplete="off">' +
+      '<button class="gross" id="luegeBtn">Lüge abgeben</button>';
+    document.getElementById('luegeBtn').addEventListener('click', async () => {
+      const btn = document.getElementById('luegeBtn');
+      const feld = document.getElementById('luegeInput');
+      const t = feld.value.trim();
+      if(!t) return;
+
+      // Vergleich ohne Gross-/Kleinschreibung, Artikel und Satzzeichen,
+      // damit "der Eiffelturm" nicht als eigene Luege durchgeht.
+      const normal = (x) => x.toLowerCase()
+        .replace(/^(der|die|das|ein|eine|einen)\s+/,'')
+        .replace(/[.,!?;:]/g,'')
+        .replace(/\s+/g,' ')
+        .trim();
+
+      if(normal(t) === normal(runde.echte_antwort)){
+        alert('Das ist die echte Antwort. Denk dir etwas aus.');
+        return;
+      }
+
+      // Hat jemand anders schon dasselbe getippt? Dann waere beim
+      // Abstimmen nicht zuzuordnen, wessen Luege gemeint ist.
+      const vorhandene = await sb.from('bluff_luegen')
+        .select('spieler,text').eq('runde_id', runde.id);
+      const doppelt = (vorhandene.data || []).some(
+        l => l.spieler !== ich && normal(l.text) === normal(t)
+      );
+      if(doppelt){
+        alert('Diese Antwort hat schon jemand abgegeben. Denk dir etwas anderes aus.');
+        return;
+      }
+
+      btn.disabled = true;
+      const { error } = await sb.from('bluff_luegen')
+        .insert({ runde_id:runde.id, spieler:ich, text:t });
+
+      if(error){
+        btn.disabled = false;
+        alert('Konnte nicht abgeben: ' + error.message + '\nBitte nochmal versuchen.');
+        return;
+      }
+      ladeRunde();
+    });
+    return;
+  }
+
+  const lg = await sb.from('bluff_luegen').select('spieler,text').eq('runde_id', runde.id);
+  const luegen = lg.data || [];
+
+  if(runde.phase === 'raten'){
+    if(meineStimme){
+      app.innerHTML = kopf +
+        '<div class="info">Gewählt: <b>' + meineStimme.gewaehlt + '</b><br><br>Warte auf die Auflösung.</div>';
+      return;
+    }
+    const optionen = mische(
+      [{ text:runde.echte_antwort, echt:true }]
+      .concat(luegen.filter(l => l.spieler !== ich).map(l => ({ text:l.text, echt:false })))
+    );
+    app.innerHTML = kopf + optionen.map((o,i) =>
+      '<div class="option" data-i="' + i + '">' + o.text + '</div>'
+    ).join('');
+    Array.from(app.querySelectorAll('.option')).forEach(el => {
+      el.addEventListener('click', async () => {
+        const o = optionen[+el.dataset.i];
+        // Doppelklicks sperren, sonst kommen zwei Stimmen raus
+        Array.from(app.querySelectorAll('.option')).forEach(x => {
+          x.style.pointerEvents = 'none'; x.style.opacity = '.5';
+        });
+        el.style.opacity = '1';
+
+        const { error } = await sb.from('bluff_stimmen').insert({
+          runde_id:runde.id, spieler:ich, gewaehlt:o.text, ist_echt:o.echt
+        });
+        if(error){
+          Array.from(app.querySelectorAll('.option')).forEach(x => {
+            x.style.pointerEvents = ''; x.style.opacity = '';
+          });
+          alert('Stimme konnte nicht gezaehlt werden: ' + error.message +
+                '\nBitte nochmal antippen.');
+          return;
+        }
+        ladeRunde();
+      });
+    });
+    return;
+  }
+
+  const richtig = meineStimme && meineStimme.ist_echt;
+  let text;
+  if(!meineStimme) text = 'Keine Stimme abgegeben.';
+  else if(richtig) text = 'Richtig geraten. 2 Punkte.';
+  else text = 'Du bist auf eine Lüge reingefallen: „' + meineStimme.gewaehlt + '“';
+
+  app.innerHTML = kopf +
+    '<div class="aufl"><div class="l">Echte Antwort</div><div class="w">' + runde.echte_antwort + '</div></div>' +
+    '<div class="info">' + text + '</div>';
+}
+
+function start(){
+  if(!sb){ app.innerHTML = '<div class="info">Nicht eingeloggt. Seite neu laden.</div>'; return; }
+  sb.channel('bluff-buzzer')
+    .on('postgres_changes', { event:'*', schema:'public', table:'bluff_runden' }, ladeRunde)
+    .on('postgres_changes', { event:'*', schema:'public', table:'bluff_luegen' }, ladeRunde)
+    .subscribe();
+  ladeRunde();
+}
+
+setTimeout(start, 300);
+</script>
+
+<script src="../zurueck.js"></script>
+<script src="../hintergrund.js"></script>
+<script src="../buzzer-fx.js"></script>
+
+<script>
+// Turnier: Rolle merken und auf Formatwechsel horchen.
+// Schaltet der Spielleiter weiter, springt dieses Geraet mit.
+if(window.TURNIER){
+  TURNIER.setzeRolle('buzzer');
+  TURNIER.starte(typeof sb !== "undefined" ? sb : null);
+}
+</script>
+
+
+<script src="../camera-config.js"></script>
+<script src="../show-camera.js?v=48"></script>
+</body>
+</html>

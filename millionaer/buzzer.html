@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>WWM — Buzzer</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@500;700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../public-client.js"></script>
+
+<script src="../crew.js"></script>
+<script src="questions.js"></script>
+<style>
+  :root{
+    --bg:#0a0e1a; --panel:#12172a; --panel-border:#232b45;
+    --ink:#eef1f8; --muted:#6b7488; --accent:#00e5c7;
+    --gold:#f5c542; --spy:#6c5ce7; --risk:#c44dff;
+    --good:#22c55e; --bad:#ff3860;
+    --ease:cubic-bezier(.22,.9,.32,1);
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;}
+  body{
+    background:radial-gradient(ellipse at 50% 0%, #1a1035 0%, var(--bg) 65%);
+    color:var(--ink);font-family:'Inter',sans-serif;
+    display:flex;align-items:flex-start;justify-content:center;
+    padding:20px 16px calc(24px + env(safe-area-inset-bottom,0px));
+  }
+  .wrap{width:100%;max-width:440px;}
+
+  h1{font-family:'Anton',sans-serif;letter-spacing:2px;font-size:26px;margin:0 0 16px;text-align:center;}
+
+  #joinView{padding-top:60px;text-align:center;}
+  select,button{font-family:'Inter',sans-serif;}
+  select{
+    width:100%;background:#0d1220;border:1px solid var(--panel-border);color:var(--ink);
+    padding:14px;border-radius:12px;font-size:16px;margin-bottom:12px;text-align:center;
+  }
+  .btn-primary{
+    width:100%;background:var(--accent);border:none;color:#06231e;
+    padding:14px;border-radius:12px;font-size:15px;font-weight:900;letter-spacing:1px;cursor:pointer;
+  }
+
+  .head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+  .me{display:flex;align-items:center;gap:8px;font-weight:700;font-size:14px;}
+  .me img{width:30px;height:30px;border-radius:50%;border:2px solid var(--accent);}
+  .score{
+    font-family:'Anton',sans-serif;font-size:20px;color:var(--accent);
+    background:rgba(0,229,199,.1);border:1px solid rgba(0,229,199,.35);
+    padding:3px 12px;border-radius:999px;
+  }
+  .roundbar{
+    display:flex;justify-content:space-between;font-size:11px;color:var(--muted);
+    letter-spacing:1.5px;text-transform:uppercase;font-weight:700;margin-bottom:10px;
+  }
+
+  .qbox{
+    background:linear-gradient(180deg, rgba(108,92,231,.14), rgba(108,92,231,.04));
+    border:1px solid rgba(140,120,255,.35);
+    border-radius:16px;padding:18px 16px;margin-bottom:14px;
+    font-size:17px;font-weight:700;line-height:1.4;text-align:center;
+    min-height:70px;display:flex;align-items:center;justify-content:center;
+  }
+
+  .answers{display:flex;flex-direction:column;gap:10px;margin-bottom:18px;}
+  .ans{
+    position:relative;display:flex;align-items:center;gap:12px;
+    background:var(--panel);border:1px solid var(--panel-border);
+    border-radius:14px;padding:14px 14px;
+    font-size:15px;font-weight:700;color:var(--ink);text-align:left;
+    cursor:pointer;transition:transform .12s var(--ease), border-color .2s, background .2s;
+    min-height:56px;
+  }
+  .ans .letter{
+    flex:0 0 26px;font-family:'Anton',sans-serif;font-size:16px;
+    color:var(--accent);letter-spacing:1px;
+  }
+  .ans:not(.locked):active{transform:scale(.98);}
+  .ans:not(.locked):hover{border-color:var(--accent);}
+  .ans.chosen{
+    background:rgba(0,229,199,.12);border-color:var(--accent);
+  }
+  .ans.chosen::after{
+    content:'✓';position:absolute;right:14px;color:var(--accent);font-weight:900;
+  }
+  .ans.locked{cursor:default;opacity:.9;}
+  .ans.gone{opacity:.18;pointer-events:none;text-decoration:line-through;}
+  .ans.correct{background:rgba(34,197,94,.16);border-color:var(--good);}
+  .ans.wrong{background:rgba(255,56,96,.14);border-color:var(--bad);}
+
+  .spies{margin-left:auto;display:flex;align-items:center;gap:-6px;padding-right:4px;}
+  .spies img{
+    width:24px;height:24px;border-radius:50%;border:2px solid var(--panel);
+    margin-left:-8px;
+  }
+  .spies .cnt{
+    font-size:11px;font-weight:900;background:var(--spy);color:#fff;
+    width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    margin-right:2px;
+  }
+
+  .jokers{display:flex;gap:8px;justify-content:center;margin-bottom:6px;}
+  .joker{
+    position:relative;flex:1;max-width:120px;height:52px;
+    display:flex;align-items:center;justify-content:center;gap:6px;
+    background:#141828;border:none;padding:0;cursor:pointer;
+    clip-path:polygon(14% 0%, 86% 0%, 100% 50%, 86% 100%, 14% 100%, 0% 50%);
+    transition:transform .12s var(--ease), filter .2s;
+  }
+
+  .joker::before{
+    content:'';position:absolute;inset:0;
+    background:var(--jc);
+    clip-path:polygon(14% 0%, 86% 0%, 100% 50%, 86% 100%, 14% 100%, 0% 50%);
+    z-index:0;
+  }
+  .joker::after{
+    content:'';position:absolute;inset:2px;
+    background:#141828;
+    clip-path:polygon(14% 0%, 86% 0%, 100% 50%, 86% 100%, 14% 100%, 0% 50%);
+    z-index:1;
+  }
+  .joker .lbl{
+    position:relative;z-index:2;display:flex;align-items:center;gap:6px;
+    font-family:'Anton',sans-serif;font-size:14px;letter-spacing:1px;color:var(--ink);
+  }
+  .joker .ico{font-size:15px;line-height:1;}
+  .joker[data-j="5050"]{--jc:var(--gold);}
+  .joker[data-j="spy"]{--jc:var(--spy);}
+  .joker[data-j="risk"]{--jc:var(--risk);}
+  .joker:not(:disabled):active{transform:scale(.95);}
+  .joker:not(:disabled):hover{filter:brightness(1.25);}
+  .joker:disabled{cursor:default;filter:grayscale(1) brightness(.5);}
+  .joker.armed{filter:brightness(1.4);}
+  .joker.armed::after{background:color-mix(in srgb, var(--jc) 22%, #141828);}
+
+  .jokerhint{
+    text-align:center;font-size:11px;color:var(--muted);min-height:16px;
+    letter-spacing:.4px;margin-bottom:14px;
+  }
+  .jokerhint b{color:var(--ink);}
+
+  .status{
+    text-align:center;font-size:13px;color:var(--muted);
+    padding:12px;border:1px dashed var(--panel-border);border-radius:12px;
+  }
+  .status.good{color:var(--good);border-color:rgba(34,197,94,.4);background:rgba(34,197,94,.06);}
+  .status.bad{color:var(--bad);border-color:rgba(255,56,96,.4);background:rgba(255,56,96,.06);}
+  .status.risk{color:var(--risk);border-color:rgba(196,77,255,.4);background:rgba(196,77,255,.07);}
+</style>
+<link rel="stylesheet" href="../responsive.css" />
+<link rel="stylesheet" href="../show-camera.css">
+</head>
+<body>
+<div class="wrap">
+
+  <div id="joinView">
+    <h1>WER WIRD MILLIONÄR</h1>
+    <input id="nameInput" type="text" maxlength="32" autocomplete="nickname" placeholder="Dein Name" aria-label="Dein Name">
+    <button class="btn-primary" id="joinBtn">BEITRETEN</button>
+  </div>
+
+  <div id="gameView" style="display:none;">
+    <div class="head">
+      <div class="me"><img id="meAvatar" alt=""><span id="meName"></span></div>
+      <div class="score" id="meScore">0</div>
+    </div>
+    <div class="roundbar">
+      <span id="roundLbl">Runde –</span>
+      <span id="valueLbl">– Punkte</span>
+    </div>
+
+    <div class="qbox" id="qbox">Warte auf die erste Frage…</div>
+
+    <div class="answers" id="answers"></div>
+
+    <div class="jokers">
+      <button class="joker" data-j="5050" id="j5050">
+        <span class="lbl"><span class="ico">◑</span>50/50</span>
+      </button>
+      <button class="joker" data-j="spy" id="jspy">
+        <span class="lbl"><span class="ico">🕵</span>SPY</span>
+      </button>
+      <button class="joker" data-j="risk" id="jrisk">
+        <span class="lbl"><span class="ico">🎲</span>RISK</span>
+      </button>
+    </div>
+    <div class="jokerhint" id="jokerhint"></div>
+
+    <div class="status" id="status">Warte auf die Frage…</div>
+  </div>
+</div>
+
+<script>
+const sb = window.KA_SB;
+const LETTERS = ['A','B','C','D'];
+let myName = sessionStorage.getItem('wwm_name') || '';
+let state = null;
+
+
+function showGame(){
+  document.getElementById('joinView').style.display = 'none';
+  document.getElementById('gameView').style.display = 'block';
+  document.getElementById('meName').textContent = myName;
+  const av = (typeof avatarFor === 'function') ? avatarFor(myName) : null;
+  const img = document.getElementById('meAvatar');
+  if(av){ img.src = av; } else { img.style.display = 'none'; }
+}
+if(myName) showGame();
+
+document.getElementById('nameInput').addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('joinBtn').click(); });
+
+document.getElementById('joinBtn').onclick = async () => {
+  const val = window.KA_PUBLIC.normalizeName(document.getElementById('nameInput').value);
+  if(!val) return;
+  myName = val;
+  sessionStorage.setItem('wwm_name', myName);
+  const reg = await window.KA_PUBLIC.registerPlayer(myName, 'millionaer');
+  if(!reg.ok) return;
+  const { data: joined, error: joinError } = await sb.rpc('wwm_join_player', {
+    p_name: myName, p_fresh: reg.data?.fresh === true
+  });
+  if(joinError){
+    console.error('wwm_join_player:', joinError.message);
+    return;
+  }
+  if(joined) state = joined;
+  showGame();
+  render();
+};
+
+async function load(){
+  const { data, error } = await sb.from('wwm_state').select('state').eq('id',1).single();
+  // Bei Lesefehler den alten Stand behalten statt ihn zu leeren.
+  // Frueher wurde hier {} gesetzt - der naechste save() hat damit
+  // den kompletten Spielstand ueberschrieben.
+  if(error || !data || !data.state){
+    console.warn('wwm_state konnte nicht gelesen werden:', error && error.message);
+    return null;
+  }
+  state = data.state;
+  state.players = state.players || {};
+  state.answers = state.answers || {};
+  state.usedJoker = state.usedJoker || null;
+  state.gone = state.gone || {};
+  return state;
+}
+async function answer(idx){
+  // Vorpruefung im Browser spart einen Aufruf, wenn ohnehin nichts geht
+  const s = await load();
+  if(!s) return;
+  if(!s.players || !s.players[myName]) return;
+  if(s.phase !== 'frage') return;
+  if(s.answers[myName] != null) return;
+
+  // Eintragen macht die Datenbank selbst. Sonst ueberschreiben
+  // sich gleichzeitige Antworten gegenseitig - bei einer leichten
+  // Frage klicken alle im selben Moment.
+  const { data, error } = await sb.rpc('wwm_antwort_setzen', {
+    p_name: myName, p_index: idx
+  });
+
+  if(error){
+    console.error('wwm_antwort_setzen:', error.message);
+    return;
+  }
+  if(data) state = data;
+  render();
+}
+
+async function useJoker(typ){
+  const s = await load();
+  if(!s) return;
+  if(s.phase !== 'frage') return;
+  if(s.usedJoker) return;
+  const me = s.players[myName];
+  if(!me || !me.jokers[typ]) return;
+  if(typ !== 'risk' && s.answers[myName] != null) return;
+
+  // Den Joker vergibt die Datenbank, damit bei gleichzeitigem
+  // Klick nicht zwei Spieler denselben Slot bekommen.
+  const { data, error } = await sb.rpc('wwm_joker_ziehen', {
+    p_name: myName, p_typ: typ
+  });
+
+  if(error){
+    console.error('wwm_joker_ziehen:', error.message);
+    return;
+  }
+
+  let s2 = data;
+  if(!s2) return;
+  // Ein anderer war schneller
+  if(!s2.usedJoker || s2.usedJoker.name !== myName) { state = s2; render(); return; }
+
+  // 50/50-Auswahl wird separat atomar gespeichert. Dadurch ueberschreibt
+  // der Joker keine Antworten, die in derselben Sekunde eintreffen.
+  if(typ === '5050'){
+    const q = WWM_FRAGEN[s2.qIndex];
+    const falsche = [0,1,2,3].filter(i => i !== q.richtig);
+    for(let i = falsche.length - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i+1));
+      [falsche[i], falsche[j]] = [falsche[j], falsche[i]];
+    }
+    const { data: goneState, error: goneError } = await sb.rpc('wwm_set_5050_gone', {
+      p_name: myName, p_gone: falsche.slice(0,2)
+    });
+    if(goneError){
+      console.error('wwm_set_5050_gone:', goneError.message);
+      return;
+    }
+    if(goneState) s2 = goneState;
+  }
+  state = s2;
+  render();
+}
+
+function render(){
+  if(!state || !myName) return;
+  const me = state.players[myName];
+  if(!me) return;
+
+  document.getElementById('meScore').textContent = me.score;
+
+  const q = (state.qIndex != null) ? WWM_FRAGEN[state.qIndex] : null;
+  const phase = state.phase || 'warten';
+
+  document.getElementById('roundLbl').textContent =
+    q ? `Frage ${state.qIndex + 1} / ${WWM_FRAGEN.length}` : 'Runde –';
+  document.getElementById('valueLbl').textContent =
+    q ? `${wwmPunkte(state.qIndex)} Punkte` : '– Punkte';
+
+  document.getElementById('qbox').textContent =
+    q ? q.frage : 'Warte auf die nächste Frage…';
+
+  const box = document.getElementById('answers');
+  const meineAntwort = state.answers[myName];
+  const meineGone = state.gone[myName] || [];
+  const spyAktiv = state.usedJoker && state.usedJoker.name === myName && state.usedJoker.typ === 'spy';
+
+  if(!q){ box.innerHTML = ''; }
+  else {
+    box.innerHTML = q.antworten.map((txt, i) => {
+      const cls = ['ans'];
+      if(phase !== 'frage') cls.push('locked');
+      if(meineAntwort === i) cls.push('chosen');
+      if(meineGone.includes(i)) cls.push('gone');
+      if(phase === 'aufgeloest'){
+        cls.push('locked');
+        if(i === q.richtig) cls.push('correct');
+        else if(meineAntwort === i) cls.push('wrong');
+      }
+
+      let spies = '';
+      if(spyAktiv || phase === 'aufgeloest'){
+        const waehler = Object.entries(state.answers)
+          .filter(([n,a]) => a === i && n !== myName)
+          .map(([n]) => n);
+        if(waehler.length){
+          const imgs = waehler.slice(0,4).map(n => {
+            const av = avatarFor(n);
+            return av ? `<img src="${av}" alt="${n}" title="${n}">` : '';
+          }).join('');
+          spies = `<span class="spies"><span class="cnt">${waehler.length}</span>${imgs}</span>`;
+        }
+      }
+      return `<button class="${cls.join(' ')}" data-i="${i}">
+                <span class="letter">${LETTERS[i]}</span>
+                <span>${txt}</span>${spies}
+              </button>`;
+    }).join('');
+
+    if(phase === 'frage' && meineAntwort == null){
+      box.querySelectorAll('.ans:not(.gone)').forEach(b => {
+        b.onclick = () => answer(parseInt(b.dataset.i));
+      });
+    }
+  }
+
+  const jokerGesperrt = !!state.usedJoker;
+  const binIchDerNutzer = state.usedJoker && state.usedJoker.name === myName;
+  [['5050','j5050'], ['spy','jspy'], ['risk','jrisk']].forEach(([typ, id]) => {
+    const btn = document.getElementById(id);
+    const habIch = me.jokers[typ];
+    const aktivJetzt = binIchDerNutzer && state.usedJoker.typ === typ;
+    btn.classList.toggle('armed', aktivJetzt);
+
+    const zuSpaet = (typ !== 'risk') && (meineAntwort != null);
+    btn.disabled = !habIch || phase !== 'frage' || jokerGesperrt || zuSpaet;
+    btn.onclick = () => useJoker(typ);
+  });
+
+  const hint = document.getElementById('jokerhint');
+  if(state.usedJoker){
+    const label = { '5050':'50/50', 'spy':'Spy', 'risk':'Risk' }[state.usedJoker.typ];
+    hint.innerHTML = state.usedJoker.name === myName
+      ? `Du hast <b>${label}</b> gezückt`
+      : `<b>${state.usedJoker.name}</b> hat <b>${label}</b> gezückt — diese Runde ist blockiert`;
+  } else if(phase === 'frage'){
+    hint.textContent = 'Ein Joker pro Runde — für alle zusammen';
+  } else {
+    hint.textContent = '';
+  }
+
+  const st = document.getElementById('status');
+  st.className = 'status';
+  if(phase === 'warten' || !q){
+    st.textContent = 'Warte auf die nächste Frage…';
+  } else if(phase === 'frage'){
+    if(meineAntwort == null){
+      st.textContent = 'Wähle eine Antwort — sie ist danach final';
+    } else {
+      const offen = Object.keys(state.players).length - Object.keys(state.answers).length;
+      st.textContent = offen > 0
+        ? `Antwort abgegeben. Warte auf ${offen} Spieler…`
+        : 'Alle haben geantwortet. Warte auf die Auflösung…';
+    }
+  } else if(phase === 'aufgeloest'){
+    const richtig = meineAntwort === q.richtig;
+    const riskMir = state.usedJoker && state.usedJoker.name === myName && state.usedJoker.typ === 'risk';
+    const p = wwmPunkte(state.qIndex);
+    if(meineAntwort == null){
+      st.className = 'status bad';
+      st.textContent = 'Keine Antwort abgegeben — 0 Punkte';
+    } else if(richtig){
+      st.className = riskMir ? 'status risk' : 'status good';
+      st.textContent = riskMir ? `RISK gewonnen! +${p*2} Punkte` : `Richtig! +${p} Punkte`;
+    } else {
+      st.className = riskMir ? 'status risk' : 'status bad';
+      st.textContent = riskMir ? `RISK verloren! −${p} Punkte` : 'Leider falsch — keine Punkte';
+    }
+  }
+}
+
+async function tick(){
+  const s = await load();
+  if(!s) return;
+
+  // Entfernte Spieler werden nicht automatisch wieder in den Spielstand
+  // geschrieben. Ein erneuter Beitritt erfolgt bewusst ueber den Join-Button.
+  render();
+}
+tick();
+setInterval(tick, 1500);
+sb.channel('wwm_buzz')
+  .on('postgres_changes', { event:'*', schema:'public', table:'wwm_state' }, () => tick())
+  .subscribe();
+</script>
+<script src="../zurueck.js"></script>
+<script src="../hintergrund.js"></script>
+<script src="../buzzer-fx.js"></script>
+
+<script>
+// Turnier: Rolle merken und auf Formatwechsel horchen.
+// Schaltet der Spielleiter weiter, springt dieses Geraet mit.
+if(window.TURNIER){
+  TURNIER.setzeRolle('buzzer');
+  TURNIER.starte(typeof sb !== "undefined" ? sb : null);
+}
+</script>
+
+
+<script src="../camera-config.js"></script>
+<script src="../show-camera.js?v=48"></script>
+</body>
+</html>

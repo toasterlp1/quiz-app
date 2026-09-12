@@ -1,0 +1,497 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>Hotzone — Spielleiter</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@500;700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../eingabeschutz.js"></script>
+<script src="../public-client.js"></script>
+
+<script src="../kern-render.js"></script>
+<script src="../kern-korrektur.js"></script>
+<script src="../live.js"></script>
+<script src="./categories.js"></script>
+<style>
+  :root{
+    --bg:#0a0e1a; --panel:#12172a; --panel-border:#232b45;
+    --ink:#eef1f8; --muted:#6b7488;
+    --blau:#3a7bff; --rot:#ff3860;
+    --accent:#00e5c7; --warn:#ffd166; --bad:#ff3860; --good:#3ddc84;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-serif;padding:24px;min-height:100vh;}
+  h1{font-family:'Anton',sans-serif;letter-spacing:2px;margin:0 0 20px;font-size:28px;}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;max-width:1100px;margin:0 auto;}
+  .card{background:var(--panel);border:1px solid var(--panel-border);border-radius:16px;padding:20px;}
+  .card.full{grid-column:1/-1;}
+  .card h2{font-size:15px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin:0 0 14px;}
+  button{font-family:'Inter',sans-serif;font-weight:700;border:none;border-radius:10px;padding:12px 18px;cursor:pointer;font-size:14px;transition:transform .1s, opacity .15s;}
+  button:active{transform:scale(.96);}
+  button:disabled{opacity:.35;cursor:not-allowed;}
+  .btn-primary{background:var(--accent);color:#04120f;}
+  .btn-warn{background:var(--warn);color:#241900;}
+  .btn-bad{background:var(--bad);color:#fff;}
+  .btn-ghost{background:#1b2138;color:var(--ink);border:1px solid var(--panel-border);}
+  .row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;}
+  .status-line{font-size:14px;color:var(--muted);margin-bottom:14px;line-height:1.5;}
+  .status-line b{color:var(--ink);}
+  .gross{font-family:'Anton',sans-serif;font-size:26px;letter-spacing:1px;}
+  .ziel{color:var(--warn);}
+  .tipp{color:var(--accent);}
+  .teams{display:flex;gap:14px;}
+  .team{flex:1;background:#0d1220;border:1px solid var(--panel-border);border-radius:12px;padding:14px;text-align:center;}
+  .team.blau{border-color:rgba(58,123,255,.5);}
+  .team.rot{border-color:rgba(255,56,96,.5);}
+  .team .lbl{font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);}
+  .team .pkt{font-family:'Anton',sans-serif;font-size:34px;line-height:1.1;}
+  .team.blau .pkt{color:var(--blau);}
+  .team.rot .pkt{color:var(--rot);}
+  .team.dran{box-shadow:0 0 0 2px var(--warn) inset;}
+  .players{display:flex;flex-direction:column;gap:8px;}
+  .player-row{display:flex;align-items:center;gap:10px;background:#0d1220;border:1px solid var(--panel-border);border-radius:8px;padding:8px 10px;}
+  .player-row .name{flex:1;font-weight:700;}
+  .player-row .team-tag{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);}
+  .player-row .remove-player{
+    flex:0 0 auto;padding:5px 9px;font-size:11px;border-radius:7px;
+    background:#171d31;color:#ff7b91;border:1px solid rgba(255,56,96,.28);
+  }
+  .player-row .remove-player:hover{background:rgba(255,56,96,.12);border-color:rgba(255,56,96,.5);}
+  .player-add{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px;}
+  .player-add input,.player-add select{
+    min-height:36px;padding:7px 10px;border-radius:8px;
+    background:#0d1220;color:var(--ink);border:1px solid var(--panel-border);
+    font:600 13px 'Inter',sans-serif;outline:none;
+  }
+  .player-add input{flex:1 1 220px;min-width:180px;}
+  .player-add select{flex:0 0 120px;}
+  .player-add input:focus,.player-add select:focus{border-color:rgba(0,229,199,.6);box-shadow:0 0 0 2px rgba(0,229,199,.08);}
+  .player-add-hint{font-size:12px;color:var(--muted);margin-top:7px;}
+  .player-row.clue{border-color:var(--warn);}
+  .mini{padding:6px 10px;font-size:12px;}
+  .joker-liste{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
+  .jk{font-size:12px;padding:5px 10px;border-radius:999px;background:#0d1220;border:1px solid var(--panel-border);color:var(--muted);}
+  .jk.weg{opacity:.35;text-decoration:line-through;}
+  .jk.aktiv{border-color:var(--warn);color:var(--warn);}
+  .hinweis{font-size:13px;color:var(--muted);margin-top:8px;line-height:1.5;}
+  .ergebnis{font-family:'Anton',sans-serif;font-size:20px;margin-top:10px;}
+  .ergebnis.gut{color:var(--good);}
+  .ergebnis.schlecht{color:var(--bad);}
+  @media (max-width:820px){
+    body{padding:14px;}
+    .grid{grid-template-columns:1fr;gap:14px;}
+    button,select,input{min-height:40px;}
+    .teams{flex-direction:column;}
+  }
+</style>
+<link rel="stylesheet" href="../responsive.css" />
+<link rel="stylesheet" href="../kern-korrektur.css" />
+</head>
+<body>
+<h1>HOTZONE — SPIELLEITER</h1>
+<div class="grid">
+
+  <div class="card full">
+    <h2>Runde</h2>
+    <div class="status-line" id="statusLine">Warte auf Spielstand…</div>
+    <div class="teams">
+      <div class="team blau" id="teamBlau">
+        <div class="lbl">Blue Team</div><div class="pkt" id="pktBlau">0</div>
+      </div>
+      <div class="team rot" id="teamRot">
+        <div class="lbl">Red Team</div><div class="pkt" id="pktRot">0</div>
+      </div>
+    </div>
+    <div class="hinweis" id="rundenInfo"></div>
+  </div>
+
+  <div class="card">
+    <h2>Ablauf</h2>
+    <div class="row">
+      <button class="btn-primary" id="btnNeueRunde">Neue Runde</button>
+      <button class="btn-warn" id="btnAufloesen">Auflösen &amp; werten</button>
+    </div>
+    <div class="row">
+      <button class="btn-ghost mini" id="btnTeamWechsel">Team wechseln</button>
+      <button class="btn-ghost mini" id="btnNaechsterGeber">Nächster Hinweisgeber</button>
+    </div>
+    <div class="hinweis">
+      Exakt getroffen 3 · eine Zahl daneben 1 · weiter weg 0<br>
+      Mit Risk: exakt 6, sonst immer −3
+    </div>
+    <div class="ergebnis" id="ergebnisZeile"></div>
+  </div>
+
+  <div class="card">
+    <h2>Joker</h2>
+    <div class="status-line">Jedes Team hat jeden Joker einmal pro Spiel.</div>
+    <div><b style="color:var(--blau)">Blue</b><div class="joker-liste" id="jkBlau"></div></div>
+    <div style="margin-top:12px;"><b style="color:var(--rot)">Red</b><div class="joker-liste" id="jkRot"></div></div>
+  </div>
+
+  <div class="card full">
+    <h2>Spieler</h2>
+    <div class="players" id="spielerListe">
+      <div class="status-line" id="spielerListeLeer">Noch niemand beigetreten.</div>
+    </div>
+    <div class="player-add">
+      <input id="spielerManuellName" type="text" maxlength="24" autocomplete="off" placeholder="Spielername hinzufügen">
+      <select id="spielerManuellTeam" aria-label="Team">
+        <option value="blue">Blue Team</option>
+        <option value="red">Red Team</option>
+        <option value="">Ohne Team</option>
+      </select>
+      <button class="btn-primary mini" id="btnSpielerHinzufuegen">Spieler hinzufügen</button>
+    </div>
+    <div class="player-add-hint">Manuell hinzugefügte Spieler können jederzeit wieder über „Entfernen“ aus dem Spiel genommen werden.</div>
+    <div class="row" style="margin-top:12px;">
+      <button class="btn-ghost mini" id="btnPunkteReset">Punkte zurücksetzen</button>
+      <button class="btn-bad mini" id="btnSpielReset">Spiel komplett zurücksetzen</button>
+    </div>
+    <div id="korrekturPanel"></div>
+  </div>
+
+</div>
+
+<script>
+const sb = window.KA_SB;
+const JOKER_NAMEN = { double:'RISK', reroll:'NEUE FRAGE', grey:'CUT' };
+let state = null;
+let hzActionBusy = false;
+
+const spielerManuellName = document.getElementById('spielerManuellName');
+const spielerManuellTeam = document.getElementById('spielerManuellTeam');
+const btnSpielerHinzufuegen = document.getElementById('btnSpielerHinzufuegen');
+
+async function spielerManuellHinzufuegen(){
+  const name = (spielerManuellName.value || '').trim().replace(/\s+/g,' ');
+  const team = spielerManuellTeam.value || null;
+  if(!name){ spielerManuellName.focus(); return; }
+
+  const s = await ladeState();
+  if(!s) return;
+  s.players = s.players || {};
+  if(s.players[name]){
+    alert('Dieser Spieler ist bereits im Spiel.');
+    spielerManuellName.focus();
+    spielerManuellName.select();
+    return;
+  }
+
+  s.players[name] = { team: team, score: 0 };
+  await speichere(s);
+  spielerManuellName.value = '';
+  spielerManuellName.focus();
+}
+
+btnSpielerHinzufuegen.addEventListener('click', spielerManuellHinzufuegen);
+spielerManuellName.addEventListener('keydown', function(e){
+  if(e.key === 'Enter'){ e.preventDefault(); spielerManuellHinzufuegen(); }
+});
+
+// Spielerliste ruhig verwalten - kein Neuaufbau bei jedem Render.
+const hzSpielerListe = KernRender.liste(document.getElementById('spielerListe'), {
+  schluessel: ([n]) => n,
+  erstellen: () => {
+    const el = document.createElement('div');
+    el.className = 'player-row';
+    el.innerHTML = `<span class="name"></span><span class="team-tag"></span><button class="team-blue" type="button">Blau</button><button class="team-red" type="button">Rot</button><button class="team-none" type="button">Ohne Team</button><button class="remove-player" type="button">Entfernen</button>`;
+    ['blue','red','none'].forEach(t=>el.querySelector('.team-'+t).addEventListener('click',async()=>{const name=el.dataset.playerName;const st=await ladeState();if(!st||!st.players||!st.players[name])return;st.players[name].team=t==='none'?null:t;await speichere(st);}));
+    el.querySelector('.remove-player').addEventListener('click', async function(){
+      const name = el.dataset.playerName;
+      if(!name || !state || !state.players || !state.players[name]) return;
+      if(!confirm('Spieler „' + name + '“ wirklich entfernen?')) return;
+      const s = await ladeState();
+      if(!s || !s.players || !s.players[name]) return;
+      delete s.players[name];
+      if(s.clueGiver === name){
+        const roster = teamRoster(s, s.activeTeam);
+        s.clueGiver = roster[0] || null;
+      }
+      if(s.clueZaehler) delete s.clueZaehler[name];
+      await speichere(s);
+      try { await sb.rpc('deactivate_public_player', { p_name:name, p_format:'hotzone' }); } catch(e) {}
+    });
+    return el;
+  },
+  aktualisieren: (el, [n, p], i, s) => {
+    const istGeber = state.clueGiver === n;
+    const tag = p.team === 'blue' ? 'Blue' : p.team === 'red' ? 'Red' : 'ohne Team';
+    el.dataset.playerName = n;
+    el.className = 'player-row ' + (istGeber ? 'clue' : '');
+    KernRender.textWennGeaendert(el.querySelector('.name'), n);
+    KernRender.textWennGeaendert(el.querySelector('.team-tag'), tag + (istGeber ? ' · Hinweisgeber' : ''));
+  }
+});
+
+// Freier Eingriff: Team-Punkte manuell korrigieren, zusaetzlich zum
+// kompletten "Punkte zurücksetzen"-Knopf oben.
+KernKorrektur.einbauen({
+  container: document.getElementById('korrekturPanel'),
+  spieler: () => ['Team Blue', 'Team Red'],
+  aufPunkteAendern: async (name, delta) => {
+    if(!state) return;
+    const feld = name === 'Team Blue' ? 'blueScore' : 'redScore';
+    state[feld] = (state[feld] || 0) + delta;
+    await speichere(state);
+  }
+});
+
+/* Punkteregel:
+   exakt getroffen ......... 3   (mit Risk: 6)
+   eine Zahl daneben ....... 1   (mit Risk: -3)
+   zwei oder mehr daneben .. 0   (mit Risk: -3)
+   Der Risk-Abzug ist immer -3, unabhaengig vom Punktestand. */
+function punkteFuer(tipp, ziel, riskAktiv){
+  if(tipp == null || ziel == null) return { punkte:0, text:'Kein Tipp abgegeben.' };
+  const abstand = Math.abs(tipp - ziel);
+  if(riskAktiv){
+    if(abstand === 0) return { punkte:6, text:'RISK exakt getroffen: +6' };
+    return { punkte:-3, text:'RISK daneben (' + abstand + ' ' + (abstand===1?'Zahl':'Zahlen') + ' entfernt): -3' };
+  }
+  if(abstand === 0) return { punkte:3, text:'Exakt getroffen: +3' };
+  if(abstand === 1) return { punkte:1, text:'Eine Zahl daneben: +1' };
+  return { punkte:0, text:abstand + ' Zahlen daneben: 0' };
+}
+
+async function ladeState(){
+  const { data, error } = await sb.from('hz_state').select('state').eq('id',1).single();
+  if(error || !data || !data.state){
+    console.warn('hz_state nicht lesbar:', error && error.message);
+    return null;
+  }
+  state = data.state;
+  return state;
+}
+
+async function speichere(s){
+  const { error } = await sb.from('hz_state').update({ state: s }).eq('id',1);
+  if(error){ console.warn('Speichern fehlgeschlagen:', error.message); return; }
+  state = s;
+  render();
+}
+
+function teamRoster(s, team){
+  return Object.entries(s.players || {}).filter(function(e){ return e[1].team === team; }).map(function(e){ return e[0]; });
+}
+
+function neueKategorie(s){
+  const used = s.usedCategories || [];
+  let frei = CATEGORIES.map(function(_,i){ return i; }).filter(function(i){ return used.indexOf(i) < 0; });
+  if(!frei.length){ frei = CATEGORIES.map(function(_,i){ return i; }); s.usedCategories = []; }
+  const idx = frei[Math.floor(Math.random()*frei.length)];
+  s.usedCategories = (s.usedCategories || []).concat([idx]);
+  return idx;
+}
+
+document.getElementById('btnNeueRunde').onclick = async function(){
+  if(hzActionBusy) return;
+  hzActionBusy = true;
+  const s = await ladeState();
+  if(!s) return;
+  const naechstes = s.activeTeam === 'blue' ? 'red' : 'blue';
+  const roster = teamRoster(s, naechstes);
+  if(!roster.length){ alert('Im ' + (naechstes==='blue'?'Blue':'Red') + ' Team ist niemand.'); hzActionBusy=false; return; }
+
+  // Reihum: wer am laengsten nicht dran war, gibt den Hinweis
+  const zaehler = s.clueZaehler || {};
+  roster.sort(function(a,b){ return (zaehler[a]||0) - (zaehler[b]||0); });
+  const geber = roster[0];
+  zaehler[geber] = (zaehler[geber]||0) + 1;
+
+  s.round = (s.round || 0) + 1;
+  s.activeTeam = naechstes;
+  s.clueGiver = geber;
+  s.clueZaehler = zaehler;
+  s.categoryIndex = neueKategorie(s);
+  s.target = Math.floor(Math.random()*10) + 1;
+  s.hintWord = null;
+  s.guessValue = null;
+  s.greyedNumbers = [];
+  s.doubleActive = false;
+  s.lastResult = null;
+  s.phase = 'clue';
+  try { await speichere(s); } finally { hzActionBusy = false; }
+};
+
+document.getElementById('btnAufloesen').onclick = async function(){
+  if(hzActionBusy) return;
+  hzActionBusy = true;
+  const s = await ladeState();
+  if(!s){ hzActionBusy=false; return; }
+  if(s.phase !== 'submitted' && s.phase !== 'guessing'){ alert('Es liegt noch kein Tipp vor.'); hzActionBusy=false; return; }
+  const erg = punkteFuer(s.guessValue, s.target, !!s.doubleActive);
+  const feld = s.activeTeam === 'blue' ? 'blueScore' : 'redScore';
+  s[feld] = (s[feld] || 0) + erg.punkte;
+  const teamName = s.activeTeam === 'blue' ? 'Blue Team' : 'Red Team';
+  s.lastResult = teamName + ': ' + erg.text;
+  s.phase = 'resolved';
+  s.doubleActive = false;
+  try { await speichere(s); } finally { hzActionBusy = false; }
+};
+
+document.getElementById('btnTeamWechsel').onclick = async function(){
+  const s = await ladeState();
+  if(!s) return;
+  s.activeTeam = s.activeTeam === 'blue' ? 'red' : 'blue';
+  const roster = teamRoster(s, s.activeTeam);
+  s.clueGiver = roster[0] || null;
+  await speichere(s);
+};
+
+document.getElementById('btnNaechsterGeber').onclick = async function(){
+  const s = await ladeState();
+  if(!s) return;
+  const roster = teamRoster(s, s.activeTeam);
+  if(!roster.length) return;
+  const i = roster.indexOf(s.clueGiver);
+  s.clueGiver = roster[(i + 1) % roster.length];
+  await speichere(s);
+};
+
+document.getElementById('btnPunkteReset').onclick = async function(){
+  if(!confirm('Punkte beider Teams auf 0?')) return;
+  const s = await ladeState();
+  if(!s) return;
+  s.blueScore = 0; s.redScore = 0;
+  await speichere(s);
+};
+
+document.getElementById('btnSpielReset').onclick = async function(){
+  if(!confirm('Komplett zuruecksetzen? Punkte, Joker und Runden gehen verloren.')) return;
+  const s = await ladeState();
+  if(!s) return;
+  await speichere({
+    players: s.players || {},
+    round: 0, activeTeam: null, clueGiver: null, clueZaehler: {},
+    categoryIndex: null, target: null, hintWord: null, guessValue: null,
+    greyedNumbers: [], doubleActive: false, lastResult: null,
+    blueScore: 0, redScore: 0,
+    jokersUsed: { blue:{}, red:{} },
+    usedCategories: [], phase: 'idle'
+  });
+};
+
+function render(){
+  if(!state) return;
+  const s = state;
+  const kat = (s.categoryIndex != null) ? CATEGORIES[s.categoryIndex] : null;
+
+  document.getElementById('pktBlau').textContent = s.blueScore || 0;
+  document.getElementById('pktRot').textContent  = s.redScore  || 0;
+  document.getElementById('teamBlau').classList.toggle('dran', s.activeTeam==='blue');
+  document.getElementById('teamRot').classList.toggle('dran', s.activeTeam==='red');
+
+  const teamName = s.activeTeam === 'blue' ? 'Blue Team' : s.activeTeam === 'red' ? 'Red Team' : '—';
+  const phasen = {
+    idle:'Kein Spiel aktiv. Auf "Neue Runde" klicken.',
+    clue:'Hinweisgeber denkt nach.',
+    guessing:'Team raet.',
+    submitted:'Tipp liegt vor — jetzt aufloesen.',
+    resolved:'Runde ausgewertet.'
+  };
+  document.getElementById('statusLine').innerHTML =
+    'Runde <b>' + (s.round||0) + '</b> · <b>' + teamName + '</b> · ' + (phasen[s.phase] || s.phase || '');
+
+  let info = '';
+  if(kat) info += 'Kategorie: <b>' + kat.category + '</b> (' + kat.left + ' → ' + kat.right + ')<br>';
+  if(s.target != null) info += '<span class="gross ziel">Geheime Zahl: ' + s.target + '</span><br>';
+  if(s.clueGiver) info += 'Hinweisgeber: <b>' + s.clueGiver + '</b><br>';
+  if(s.hintWord) info += 'Hinweiswort: <b>' + s.hintWord + '</b><br>';
+  if(s.guessValue != null) info += '<span class="gross tipp">Tipp: ' + s.guessValue + '</span><br>';
+  if(s.doubleActive) info += '<b style="color:var(--warn)">RISK aktiv — 6 oder −3</b><br>';
+  if((s.greyedNumbers||[]).length) info += 'CUT: ' + s.greyedNumbers.join(', ') + ' sind weg<br>';
+  document.getElementById('rundenInfo').innerHTML = info;
+
+  const erg = document.getElementById('ergebnisZeile');
+  if(s.phase === 'resolved' && s.lastResult){
+    erg.textContent = s.lastResult;
+    erg.className = 'ergebnis ' + (s.lastResult.indexOf('-3') >= 0 ? 'schlecht' : 'gut');
+  } else { erg.textContent = ''; }
+
+  const ju = s.jokersUsed || { blue:{}, red:{} };
+  ['blue','red'].forEach(function(team){
+    const el = document.getElementById(team==='blue' ? 'jkBlau' : 'jkRot');
+    el.innerHTML = Object.keys(JOKER_NAMEN).map(function(key){
+      const weg = !!(ju[team] && ju[team][key]);
+      const aktiv = (s.activeTeam===team) &&
+        ((key==='double' && s.doubleActive) || (key==='grey' && (s.greyedNumbers||[]).length>0));
+      const cls = ['jk'];
+      if(weg && !aktiv) cls.push('weg');
+      if(aktiv) cls.push('aktiv');
+      return '<span class="' + cls.join(' ') + '">' + JOKER_NAMEN[key] + '</span>';
+    }).join('');
+  });
+
+  const leerHint = document.getElementById('spielerListeLeer');
+  const namen = Object.entries(s.players || {});
+  if(leerHint) leerHint.style.display = namen.length ? 'none' : '';
+  hzSpielerListe.render(namen);
+}
+
+function starteLive(){
+  if(window.KA_LIVE){
+    KA_LIVE.start({
+      client: sb, tabelle: 'hz_state',
+      beiAenderung: function(neu){ if(neu){ state = neu; render(); } },
+      laden: async function(){ await ladeState(); render(); }
+    });
+  } else {
+    ladeState().then(render);
+    sb.channel('hz_sl')
+      .on('postgres_changes', { event:'*', schema:'public', table:'hz_state' },
+          function(p){ state = (p.new && p.new.state) || state; render(); })
+      .subscribe();
+    setInterval(async function(){ await ladeState(); render(); }, 5000);
+  }
+}
+
+starteLive();
+
+async function syncPublicPlayers(){
+  const {data}=await sb.from('public_players').select('name').eq('format','hotzone').eq('active',true);
+  if(!data) return; const s=await ladeState(); if(!s) return; s.players=s.players||{}; let changed=false;
+  data.forEach(r=>{if(!s.players[r.name]){s.players[r.name]={team:null,score:0,ready:false};changed=true;}});
+  if(changed) await speichere(s);
+}
+setInterval(syncPublicPlayers,1800); setTimeout(syncPublicPlayers,300);
+
+</script>
+
+
+<script>
+  // Hotzone spielt in Teams. Fuer die Bestenliste bekommt jeder
+  // Spieler den Punktestand seines Teams - so taucht jeder auf,
+  // und das Siegerteam steht gemeinsam oben.
+  if(window.SpielBeenden) SpielBeenden.init({
+    format: 'hotzone',
+    sammle: async function () {
+      const { data } = await sb.from('hz_state').select('state').eq('id', 1).single();
+      const s = (data && data.state) || {};
+      const players = s.players || {};
+      return Object.keys(players).map(function (name) {
+        const team = players[name].team;
+        const pkt = team === 'blue' ? (s.blueScore || 0)
+                  : team === 'red'  ? (s.redScore  || 0)
+                  : 0;
+        return { spieler: name, punkte: pkt };
+      });
+    }
+  });
+</script>
+<script src="../zurueck.js"></script>
+
+<script>
+// Turnier: Rolle merken und auf Formatwechsel horchen.
+// Schaltet der Spielleiter weiter, springt dieses Geraet mit.
+if(window.TURNIER){
+  TURNIER.setzeRolle('sl');
+  TURNIER.starte(typeof sb !== "undefined" ? sb : null);
+}
+</script>
+<script src="../active-stream-mode.js?v=48"></script>
+</body>
+</html>

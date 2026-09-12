@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>Quiz-App - Codenames</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@600;700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../live.js"></script>
+<script src="../eingabeschutz.js"></script>
+<script src="../public-client.js"></script>
+<script src="../crew.js"></script>
+
+<script src="../kern-render.js"></script>
+<script src="woerter.js"></script>
+<style>
+:root{
+  --bg:#0a0e1a; --panel:#111a30; --panel2:#16213f; --line:#232b45;
+  --rot:#e11d48; --rot2:#7f1d3a; --blau:#2563eb; --blau2:#1e3a6e;
+  --text:#eaf0ff; --muted:#7f8bab;
+}
+*{box-sizing:border-box;}
+body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);
+  font-family:'Inter','Segoe UI',system-ui,sans-serif;padding:18px;}
+.wrap{max-width:560px;margin:0 auto;}
+h1{font-family:'Anton',sans-serif;font-size:34px;text-align:center;margin:10px 0 4px;letter-spacing:1px;}
+h1 .rot{color:var(--rot);} h1 .blau{color:var(--blau);}
+.sub{text-align:center;color:var(--muted);font-size:14px;margin-bottom:22px;}
+
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px;margin-bottom:14px;}
+select,button{width:100%;padding:14px;border-radius:12px;border:1px solid var(--line);
+  background:var(--panel2);color:var(--text);font-size:16px;font-weight:700;font-family:inherit;}
+button{cursor:pointer;transition:transform .1s ease, background .2s ease;}
+button:active{transform:scale(.97);}
+button:disabled{opacity:.4;cursor:not-allowed;}
+.btnPrimary{background:linear-gradient(160deg,#3ddc84,#1fa563);border:none;color:#04150c;}
+.teamRow{display:flex;gap:10px;margin-top:10px;}
+.teamBtn{flex:1;padding:16px;border-radius:12px;font-family:'Anton',sans-serif;font-size:18px;
+  border:2px solid var(--line);background:var(--panel2);cursor:pointer;}
+.teamBtn.rot{color:var(--rot);}
+.teamBtn.blau{color:var(--blau);}
+.teamBtn.gewaehlt.rot{border-color:var(--rot);background:rgba(225,29,72,.15);}
+.teamBtn.gewaehlt.blau{border-color:var(--blau);background:rgba(37,99,235,.15);}
+.rolleRow{display:flex;gap:10px;margin-top:10px;}
+.rolleBtn{flex:1;padding:12px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);
+  color:var(--text);font-weight:700;cursor:pointer;}
+.rolleBtn.gewaehlt{border-color:#3ddc84;background:rgba(61,220,132,.15);}
+.rolleBtn:disabled{opacity:.35;cursor:not-allowed;}
+
+#gameView{display:none;}
+.statusBar{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.rolleTag{font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-weight:800;}
+.amZugTag{font-family:'Anton',sans-serif;font-size:16px;padding:6px 14px;border-radius:999px;}
+.amZugTag.rot{background:rgba(225,29,72,.2);color:var(--rot);}
+.amZugTag.blau{background:rgba(37,99,235,.2);color:var(--blau);}
+
+.hinweisForm{display:flex;gap:8px;margin-bottom:14px;}
+.hinweisForm input{flex:1;padding:12px;border-radius:10px;border:1px solid var(--line);
+  background:var(--panel2);color:var(--text);font-size:15px;}
+.hinweisForm input[type=number]{width:70px;flex:none;}
+.hinweisAktiv{
+  text-align:center;padding:12px;border-radius:12px;background:var(--panel2);
+  border:1px solid var(--line);margin-bottom:14px;font-family:'Anton',sans-serif;font-size:18px;
+}
+
+.brettMini{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;}
+.zelle{
+  aspect-ratio:1;border-radius:8px;background:var(--panel2);border:1px solid var(--line);
+  display:flex;align-items:center;justify-content:center;text-align:center;
+  font-size:10px;font-weight:700;padding:3px;cursor:pointer;line-height:1.1;
+  transition:transform .1s ease;
+}
+.zelle:active{transform:scale(.94);}
+.zelle.gesperrt{cursor:default;}
+.zelle.aufgedeckt{opacity:.5;}
+.zelle.rot{background:linear-gradient(160deg,var(--rot),var(--rot2));color:#fff;}
+.zelle.blau{background:linear-gradient(160deg,var(--blau),var(--blau2));color:#fff;}
+.zelle.neutral{background:linear-gradient(160deg,#8a7a5c,#5c5040);color:#fff;}
+.zelle.assassin{background:linear-gradient(160deg,#2a2a2a,#050505);color:#fff;}
+
+/* Spymaster: nicht-aufgedeckte Karten zeigen ihre Geheimfarbe dezent */
+.zelle.geheim-rot{box-shadow:inset 0 0 0 3px var(--rot);}
+.zelle.geheim-blau{box-shadow:inset 0 0 0 3px var(--blau);}
+.zelle.geheim-neutral{box-shadow:inset 0 0 0 3px #8a7a5c;}
+.zelle.geheim-assassin{box-shadow:inset 0 0 0 3px #fff;background:#050505;color:#fff;}
+
+.passBtn{margin-top:14px;background:var(--panel2);color:var(--rot);}
+.endeBox{text-align:center;padding:26px;}
+.endeBox h2{font-family:'Anton',sans-serif;font-size:28px;margin:0 0 8px;}
+</style>
+<link rel="stylesheet" href="../responsive.css" />
+</head>
+<body>
+
+<div id="ka-zurueck"></div>
+<div class="wrap">
+
+<h1><span class="rot">CODE</span><span class="blau">NAMES</span></h1>
+<div class="sub">Quiz-App</div>
+
+<div id="joinView" class="card">
+  <div style="font-weight:700;margin-bottom:10px;">Dein Name</div>
+  <input id="nameSel" type="text" maxlength="32" autocomplete="nickname" placeholder="Dein Name" aria-label="Dein Name">
+  <button class="btnPrimary" id="joinBtn" style="margin-top:10px;">Beitreten</button>
+</div>
+
+<div id="teamView" class="card" style="display:none;">
+  <div style="font-weight:700;margin-bottom:6px;">Team wählen</div>
+  <div class="teamRow">
+    <button class="teamBtn rot" id="btnTeamRot">Rot</button>
+    <button class="teamBtn blau" id="btnTeamBlau">Blau</button>
+  </div>
+  <div style="font-weight:700;margin:16px 0 6px;">Rolle wählen</div>
+  <div class="rolleRow">
+    <button class="rolleBtn" id="btnRolleSpymaster">Spymaster</button>
+    <button class="rolleBtn" id="btnRolleRater">Rater</button>
+  </div>
+  <div id="teamHinweis" style="font-size:13px;color:var(--muted);margin-top:10px;"></div>
+</div>
+
+<div id="gameView">
+  <div class="statusBar">
+    <span class="rolleTag" id="meineRolleTag"></span>
+    <span class="amZugTag" id="amZugTag"></span>
+  </div>
+
+  <div id="spymasterForm" class="hinweisForm" style="display:none;">
+    <input type="text" id="hinweisWortInput" placeholder="Hinweiswort">
+    <input type="number" id="hinweisZahlInput" min="0" max="9" value="1">
+    <button class="btnPrimary" id="btnHinweisAbschicken" style="width:auto;padding:12px 16px;">OK</button>
+  </div>
+
+  <div id="hinweisAnzeige" class="hinweisAktiv" style="display:none;"></div>
+
+  <div class="brettMini" id="brettMini"></div>
+
+  <button class="passBtn" id="btnPassen" style="display:none;">Runde beenden (Passen)</button>
+
+  <div id="endeBox" class="card endeBox" style="display:none;">
+    <h2 id="endeTitel"></h2>
+    <p id="endeText" style="color:var(--muted);"></p>
+    <button class="btnPrimary" id="btnNeuesSpiel" style="margin-top:10px;">Neues Spiel</button>
+  </div>
+
+  <button id="btnNeuesSpielAktiv" style="margin-top:14px;background:transparent;color:var(--muted);border:1px dashed var(--line);">
+    Neues Spiel (aktuelles verwerfen)
+  </button>
+</div>
+
+</div>
+
+<script>
+const sb = window.KA_SB;
+let myName = sessionStorage.getItem('cn_name') || '';
+let state = null;
+
+/* ===== Reine Spiellogik (isoliert getestet) ===== */
+function mische(arr){
+  const a = arr.slice();
+  for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+  return a;
+}
+function neuesBrett(woerter, startTeam){
+  const gewaehlt = mische(woerter).slice(0,25);
+  const andersTeam = startTeam === 'rot' ? 'blau' : 'rot';
+  const farben = [];
+  for(let i=0;i<9;i++) farben.push(startTeam);
+  for(let i=0;i<8;i++) farben.push(andersTeam);
+  for(let i=0;i<7;i++) farben.push('neutral');
+  farben.push('assassin');
+  const gemischt = mische(farben);
+  return gewaehlt.map((wort,i) => ({ wort, farbe: gemischt[i], aufgedeckt:false }));
+}
+function neuesSpielState(vorherigeSpieler){
+  const startTeam = Math.random() < 0.5 ? 'rot' : 'blau';
+  return {
+    players: vorherigeSpieler || {},
+    board: neuesBrett(CN_WOERTER, startTeam),
+    amZug: startTeam, phase:'spiel', hinweis:null, guessesLeft:0,
+    gewinner:null, gewinnGrund:null
+  };
+}
+function gibHinweisLogik(s, wort, zahl){
+  if(s.phase !== 'spiel') return;
+  s.hinweis = { wort, zahl };
+  s.guessesLeft = zahl === 0 ? 999 : zahl + 1;
+}
+function ratenLogik(s, index){
+  if(s.phase !== 'spiel' || !s.hinweis) return;
+  const k = s.board[index];
+  if(!k || k.aufgedeckt) return;
+  k.aufgedeckt = true;
+  if(k.farbe === 'assassin'){
+    s.phase='ende'; s.gewinner = s.amZug==='rot'?'blau':'rot'; s.gewinnGrund='assassin'; return;
+  }
+  if(k.farbe==='rot' || k.farbe==='blau'){
+    const nochOffen = s.board.filter(x=>x.farbe===k.farbe && !x.aufgedeckt).length;
+    if(nochOffen===0){ s.phase='ende'; s.gewinner=k.farbe; s.gewinnGrund='alle'; return; }
+  }
+  const eigenesTeam = k.farbe === s.amZug;
+  if(!eigenesTeam){
+    s.amZug = s.amZug==='rot'?'blau':'rot'; s.hinweis=null; s.guessesLeft=0; return;
+  }
+  s.guessesLeft -= 1;
+  if(s.guessesLeft <= 0){ s.amZug = s.amZug==='rot'?'blau':'rot'; s.hinweis=null; s.guessesLeft=0; }
+}
+function passenLogik(s){
+  if(s.phase !== 'spiel') return;
+  s.amZug = s.amZug==='rot'?'blau':'rot'; s.hinweis=null; s.guessesLeft=0;
+}
+
+/* ===== Verbindung ===== */
+async function ladeState(){
+  const { data } = await sb.from('cn_state').select('state').eq('id',1).single();
+  return (data && data.state) || null;
+}
+async function speichere(s){
+  await sb.from('cn_state').update({ state: s }).eq('id',1);
+  state = s;
+  render();
+}
+
+/* ===== Join ===== */
+
+function zeigeAnsicht(){
+  const meinEintrag = state && state.players && state.players[myName];
+  document.getElementById('joinView').style.display = myName ? 'none' : 'block';
+  document.getElementById('teamView').style.display = (myName && !meinEintrag) ? 'block' : 'none';
+  document.getElementById('gameView').style.display = (myName && meinEintrag) ? 'block' : 'none';
+}
+
+document.getElementById('joinBtn').onclick = async () => {
+  const val = window.KA_PUBLIC.normalizeName(document.getElementById('nameSel').value);
+  if(!val) return;
+  const reg = await window.KA_PUBLIC.registerPlayer(val, 'codenames');
+  if(!reg.ok) return;
+  myName = val;
+  sessionStorage.setItem('cn_name', myName);
+  zeigeAnsicht();
+  render();
+};
+
+/* ===== Team/Rolle waehlen ===== */
+let gewaehltesTeam = null, gewaehlteRolle = null;
+
+function aktualisiereTeamView(){
+  document.querySelectorAll('.teamBtn').forEach(b => b.classList.remove('gewaehlt'));
+  if(gewaehltesTeam) document.getElementById('btnTeam'+(gewaehltesTeam==='rot'?'Rot':'Blau')).classList.add('gewaehlt');
+
+  const spymasterVergeben = state && state.players && Object.values(state.players)
+    .some(p => p.team===gewaehltesTeam && p.rolle==='spymaster' && p.name!==myName);
+
+  const smBtn = document.getElementById('btnRolleSpymaster');
+  smBtn.disabled = !gewaehltesTeam || spymasterVergeben;
+  document.getElementById('btnRolleRater').disabled = !gewaehltesTeam;
+
+  document.querySelectorAll('.rolleBtn').forEach(b => b.classList.remove('gewaehlt'));
+  if(gewaehlteRolle==='spymaster') smBtn.classList.add('gewaehlt');
+  if(gewaehlteRolle==='rater') document.getElementById('btnRolleRater').classList.add('gewaehlt');
+
+  document.getElementById('teamHinweis').textContent =
+    spymasterVergeben && gewaehltesTeam ? 'Spymaster für dieses Team ist schon vergeben.' : '';
+}
+
+document.getElementById('btnTeamRot').onclick = () => { gewaehltesTeam='rot'; aktualisiereTeamView(); };
+document.getElementById('btnTeamBlau').onclick = () => { gewaehltesTeam='blau'; aktualisiereTeamView(); };
+document.getElementById('btnRolleSpymaster').onclick = async () => {
+  gewaehlteRolle='spymaster'; aktualisiereTeamView(); await tritteBei();
+};
+document.getElementById('btnRolleRater').onclick = async () => {
+  gewaehlteRolle='rater'; aktualisiereTeamView(); await tritteBei();
+};
+
+async function tritteBei(){
+  if(!gewaehltesTeam || !gewaehlteRolle) return;
+  const s = await ladeState() || neuesSpielState({});
+  s.players = s.players || {};
+  s.players[myName] = { name: myName, team: gewaehltesTeam, rolle: gewaehlteRolle };
+  await speichere(s);
+}
+
+/* ===== Spiel-Ansicht ===== */
+const brettListe = KernRender.liste(document.getElementById('brettMini'), {
+  schluessel: (ctx) => ctx.i,
+  erstellen: () => {
+    const el = document.createElement('div');
+    el.className = 'zelle';
+    return el;
+  },
+  aktualisieren: (el, ctx) => {
+    const { k, i, binIchSpymaster, kannIchRaten } = ctx;
+    let cls = 'zelle';
+    if(k.aufgedeckt) cls += ' aufgedeckt ' + k.farbe;
+    else if(binIchSpymaster) cls += ' geheim-' + k.farbe;
+    if(k.aufgedeckt || !kannIchRaten) cls += ' gesperrt';
+    el.className = cls;
+    KernRender.textWennGeaendert(el, k.wort);
+    el.onclick = (!k.aufgedeckt && kannIchRaten) ? () => klickeKarte(i) : null;
+  }
+});
+
+async function klickeKarte(i){
+  const s = await ladeState();
+  if(!s) return;
+  ratenLogik(s, i);
+  await speichere(s);
+}
+
+document.getElementById('btnHinweisAbschicken').onclick = async () => {
+  const wort = document.getElementById('hinweisWortInput').value.trim();
+  const zahl = parseInt(document.getElementById('hinweisZahlInput').value, 10) || 0;
+  if(!wort) return;
+  const s = await ladeState();
+  if(!s) return;
+  gibHinweisLogik(s, wort, zahl);
+  await speichere(s);
+  document.getElementById('hinweisWortInput').value = '';
+};
+
+document.getElementById('btnPassen').onclick = async () => {
+  const s = await ladeState();
+  if(!s) return;
+  passenLogik(s);
+  await speichere(s);
+};
+
+async function neuesSpielStarten(){
+  if(!confirm('Neues Spiel starten? Der aktuelle Spielstand geht verloren und jeder wählt sein Team neu.')) return;
+  const neu = neuesSpielState({});
+  await speichere(neu);
+}
+document.getElementById('btnNeuesSpiel').onclick = neuesSpielStarten;
+document.getElementById('btnNeuesSpielAktiv').onclick = neuesSpielStarten;
+
+function render(){
+  zeigeAnsicht();
+  if(!state) return;
+
+  const mein = state.players && state.players[myName];
+  if(!mein) return;
+
+  const binIchSpymaster = mein.rolle === 'spymaster';
+  const kannIchRaten = !binIchSpymaster && mein.team === state.amZug && !!state.hinweis && state.phase==='spiel';
+  const binIchAmZug = mein.team === state.amZug;
+
+  document.getElementById('meineRolleTag').textContent =
+    (mein.team==='rot'?'ROT':'BLAU') + ' · ' + (binIchSpymaster?'SPYMASTER':'RATER');
+  const amZugTag = document.getElementById('amZugTag');
+  amZugTag.textContent = (state.amZug==='rot'?'ROT':'BLAU') + ' ist dran';
+  amZugTag.className = 'amZugTag ' + state.amZug;
+
+  const spymasterForm = document.getElementById('spymasterForm');
+  spymasterForm.style.display = (binIchSpymaster && binIchAmZug && !state.hinweis && state.phase==='spiel') ? 'flex' : 'none';
+
+  const hinweisAnzeige = document.getElementById('hinweisAnzeige');
+  if(state.hinweis && state.phase==='spiel'){
+    hinweisAnzeige.style.display = 'block';
+    hinweisAnzeige.textContent = state.hinweis.wort.toUpperCase() + ' · ' + state.hinweis.zahl;
+  } else {
+    hinweisAnzeige.style.display = 'none';
+  }
+
+  document.getElementById('btnPassen').style.display = kannIchRaten ? 'block' : 'none';
+
+  brettListe.render(state.board.map((k,i)=>({ k, i, binIchSpymaster, kannIchRaten })));
+
+  const endeBox = document.getElementById('endeBox');
+  if(state.phase === 'ende'){
+    endeBox.style.display = 'block';
+    document.getElementById('endeTitel').textContent =
+      (state.gewinner==='rot'?'Team Rot':'Team Blau') + ' gewinnt!';
+    document.getElementById('endeText').textContent =
+      state.gewinnGrund==='assassin' ? 'Die Assassinen-Karte wurde aufgedeckt.' : 'Alle eigenen Wörter aufgedeckt.';
+  } else {
+    endeBox.style.display = 'none';
+  }
+}
+
+async function tick(){
+  const s = await ladeState();
+  if(s) state = s;
+  render();
+}
+tick();
+setInterval(tick, 1500);
+sb.channel('cn_buzzer')
+  .on('postgres_changes', { event:'*', schema:'public', table:'cn_state' }, () => tick())
+  .subscribe();
+
+zeigeAnsicht();
+</script>
+<script src="../zurueck.js"></script>
+<script src="../hintergrund.js"></script>
+
+
+<script>
+if(window.SpielBeenden) SpielBeenden.init({
+  format: 'codenames',
+  sichtbar: function(){ return true; },
+  sammle: async function(){
+    const s = await ladeState();
+    if(!s || s.phase !== 'ende' || !s.gewinner || !s.players) return [];
+    return Object.keys(s.players)
+      .filter(function(n){ return s.players[n].team === s.gewinner; })
+      .map(function(n){ return { spieler:n, punkte:1 }; });
+  }
+});
+</script>
+</body>
+</html>

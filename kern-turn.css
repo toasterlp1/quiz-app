@@ -1,0 +1,100 @@
+/* ============================================================
+   KERN-TURN.CSS — "X'S TURN" Anzeige + Buzz-Reihenfolge
+   ============================================================
+   Sichtbare Bausteine: eine Pille die zeigt wer dran ist
+   ("EMOOO'S TURN"), eine sichtbare Liste der Buzz-Reihenfolge,
+   ein Buzzer-Knopf der einlaedt draufzudruecken.
+
+   Die Akzentfarbe kommt aus --kern-akzent (pro Format gesetzt),
+   damit jedes Format seine eigene Farbe behaelt, aber dieselbe
+   Form/Animation nutzt statt es neu zu bauen.
+   ============================================================ */
+
+:root{ --kern-akzent: 225,29,72; --kern-akzent2: 30,99,208; }
+
+/* ---------- "X'S TURN" Pille ---------- */
+.kern-turn{
+  display:none;align-items:center;gap:12px;
+  background:linear-gradient(90deg, rgba(var(--kern-akzent),.85) 0%, rgba(var(--kern-akzent2),.85) 100%);
+  border:1px solid rgba(255,255,255,.2);
+  border-radius:999px;padding:9px 20px 9px 10px;
+  box-shadow:0 8px 26px -8px rgba(0,0,0,.7);
+  margin:0 auto;width:max-content;
+}
+.kern-turn.zeigen{display:flex;animation:kernTurnEin .4s cubic-bezier(.2,.9,.2,1);}
+@keyframes kernTurnEin{from{opacity:0;transform:translateY(-8px) scale(.95)}to{opacity:1;transform:none}}
+.kern-turn img{
+  width:40px;height:40px;border-radius:50%;object-fit:cover;
+  border:2.5px solid rgba(255,255,255,.85);
+  animation:kernTurnAvatarPuls 1.8s ease-in-out infinite;
+}
+@keyframes kernTurnAvatarPuls{
+  0%,100%{box-shadow:0 0 14px -2px rgba(255,217,94,.7)}
+  50%{box-shadow:0 0 24px 0 rgba(255,217,94,1)}
+}
+.kern-turn .kern-turn-name{
+  font-family:'Anton',sans-serif;font-size:18px;letter-spacing:1.5px;color:#fff;
+  text-transform:uppercase;text-shadow:0 2px 6px rgba(0,0,0,.5);
+}
+.kern-turn .kern-turn-suffix{opacity:.85;font-weight:400;}
+
+/* ---------- Buzz-Reihenfolge Liste ---------- */
+.kern-buzzorder{
+  display:flex;flex-direction:column;gap:6px;min-width:180px;
+}
+.kern-buzzorder-titel{
+  font-family:Inter,Arial,sans-serif !important;
+  font-size:10px;line-height:1.2;letter-spacing:1.5px;color:rgba(255,255,255,.58);
+  text-transform:uppercase;font-weight:800;font-style:normal !important;
+  transform:none !important;skew:none !important;text-align:center;margin:2px 0 4px;
+}
+.kern-buzzorder-item{
+  display:flex;align-items:center;gap:10px;padding:7px 12px;border-radius:10px;
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);
+  animation:kernBuzzItemEin .3s cubic-bezier(.2,.9,.2,1);
+}
+@keyframes kernBuzzItemEin{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:none}}
+.kern-buzzorder-item.aktiv{
+  background:rgba(var(--kern-akzent),.18);border-color:rgba(var(--kern-akzent),.5);
+  box-shadow:0 0 20px -6px rgba(var(--kern-akzent),.6);
+}
+.kern-buzzorder-item.raus{opacity:.35;text-decoration:line-through;}
+.kern-buzzorder-nr{
+  font-family:'Anton',sans-serif;font-size:14px;color:rgba(255,255,255,.4);min-width:16px;
+}
+.kern-buzzorder-item.aktiv .kern-buzzorder-nr{color:#fff;}
+.kern-buzzorder-name{flex:1;font-size:13.5px;font-weight:700;color:#eef1f8;}
+
+/* ---------- Buzzer-Knopf (Spielerseite) ---------- */
+.kern-buzzer-btn{
+  width:min(70vw,220px);aspect-ratio:1;border-radius:50%;
+  background:radial-gradient(circle at 38% 32%, rgba(var(--kern-akzent),.9), rgba(var(--kern-akzent),.55) 65%);
+  border:3px solid rgba(255,255,255,.25);
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Anton',sans-serif;font-size:clamp(20px,5vw,28px);color:#fff;letter-spacing:1px;
+  box-shadow:0 0 50px -10px rgba(var(--kern-akzent),.8), inset 0 2px 20px rgba(255,255,255,.15);
+  cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;
+  transition:transform .12s ease, box-shadow .2s ease;
+}
+.kern-buzzer-btn:active{transform:scale(.94);}
+.kern-buzzer-btn.bereit{animation:kernBuzzerAtem 2.2s ease-in-out infinite;}
+@keyframes kernBuzzerAtem{
+  0%,100%{transform:scale(1);box-shadow:0 0 50px -10px rgba(var(--kern-akzent),.8), inset 0 2px 20px rgba(255,255,255,.15);}
+  50%{transform:scale(1.035);box-shadow:0 0 68px -6px rgba(var(--kern-akzent),1), inset 0 2px 24px rgba(255,255,255,.2);}
+}
+.kern-buzzer-btn.gesperrt{
+  background:radial-gradient(circle at 38% 32%,#2a3550,#1a2236);
+  box-shadow:none;cursor:not-allowed;animation:none;
+}
+.kern-buzzer-btn.gedrueckt{animation:kernBuzzerKlick .35s cubic-bezier(.3,1.5,.5,1);}
+@keyframes kernBuzzerKlick{0%{transform:scale(1)}40%{transform:scale(.86)}100%{transform:scale(1)}}
+
+@media (prefers-reduced-motion: reduce){
+  .kern-turn img, .kern-buzzer-btn.bereit, .kern-buzzorder-item{ animation:none; }
+}
+
+.kern-buzzorder-liste.ist-leer::after{
+  content:'Noch niemand';display:block;padding:8px 10px;border-radius:9px;
+  background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);
+  color:rgba(255,255,255,.42);font-size:12px;font-weight:700;
+}

@@ -1,0 +1,145 @@
+/*
+  Host-Hintergrund: farbig, statisch, ohne Bewegung.
+
+  Aufbau: drei weiche Farbzonen ueber einer dunklen Grundflaeche,
+  dazu eine Vignette als Rahmen. Kein Raster, keine Partikel,
+  keine Animation.
+
+  Pro Modus werden im Kopf der Seite zwei Farben gesetzt:
+    --akzent-rgb   Hauptfarbe des Modus
+    --akzent2-rgb  Gegenfarbe fuer Tiefe
+
+  Aktions-Effekte (Buzzer, Joker, Punkte) laufen ueber host-fx.js
+  und werden hier NICHT angefasst.
+*/
+
+/* ---------- Laufenden Hintergrund abschalten ---------- */
+#ka-bg,
+#ka-bg-huelle,
+#ka-bg-raster,
+#ka-bg-vignette,
+#ka-bg-korn{
+  display:none !important;
+}
+
+/* ---------- Deko-Ebenen der Modi abschalten ---------- */
+.host .orbs,
+.host .orbs > *,
+.host .o1, .host .o2, .host .o3, .host .o4,
+.host .ambient,
+.host .ambient > *,
+.host .particles,
+.host .particles > *,
+.host .particle,
+.host .partikel,
+.host .spark,
+.host .sparks,
+.host .ember,
+.host .embers,
+.host .mask-float,
+.host .glow-ring,
+.host .floaties,
+.host .bg-anim{
+  display:none !important;
+}
+
+/*
+  Dauerbewegung auf Flaechen stoppen. Zustandsanzeigen wie
+  .onair-dot, .turn-bar oder .reveal-bar bleiben erhalten,
+  weil sie echte Information tragen.
+*/
+.host .stage,
+.host .panel,
+.host .avatar-card,
+.host .jk,
+.host .round-box,
+.host .title-rule{
+  animation:none !important;
+}
+
+/* ---------- Der Hintergrund ---------- */
+.host body,
+body.host{
+  background-color:#0a0d16;
+}
+
+.host .stage{
+  position:relative;
+  isolation:isolate;
+  background:
+    radial-gradient(85% 70% at 22% 8%,
+      rgba(var(--akzent-rgb, 74,127,208), .30) 0%,
+      rgba(var(--akzent-rgb, 74,127,208), .10) 38%,
+      rgba(var(--akzent-rgb, 74,127,208), 0) 70%),
+    radial-gradient(80% 65% at 84% 88%,
+      rgba(var(--akzent2-rgb, 150,80,220), .26) 0%,
+      rgba(var(--akzent2-rgb, 150,80,220), .08) 42%,
+      rgba(var(--akzent2-rgb, 150,80,220), 0) 72%),
+    radial-gradient(70% 55% at 50% 45%,
+      rgba(255,255,255,.045) 0%,
+      rgba(255,255,255,0) 65%),
+    linear-gradient(165deg, #141b2e 0%, #0d1220 48%, #080b14 100%)
+    !important;
+}
+
+/* Vignette rahmt das Bild im Stream */
+.host .stage::after{
+  content:'';
+  position:absolute;
+  inset:0;
+  z-index:-1;
+  pointer-events:none;
+  background:
+    radial-gradient(ellipse 100% 92% at 50% 46%,
+      transparent 42%, rgba(0,0,0,.34) 80%, rgba(0,0,0,.56) 100%);
+  animation:none !important;
+}
+
+/* Kein Rest vom alten Raster */
+.host .stage::before{
+  display:none !important;
+}
+
+/*
+  Quizduell hat kein .stage-Element, dort liegt der Hintergrund
+  direkt auf dem body.
+*/
+body.host:not(:has(.stage)){
+  background:
+    radial-gradient(85% 70% at 22% 8%,
+      rgba(var(--akzent-rgb, 74,127,208), .30) 0%,
+      rgba(var(--akzent-rgb, 74,127,208), .10) 38%,
+      rgba(var(--akzent-rgb, 74,127,208), 0) 70%),
+    radial-gradient(80% 65% at 84% 88%,
+      rgba(var(--akzent2-rgb, 150,80,220), .26) 0%,
+      rgba(var(--akzent2-rgb, 150,80,220), .08) 42%,
+      rgba(var(--akzent2-rgb, 150,80,220), 0) 72%),
+    radial-gradient(70% 55% at 50% 45%,
+      rgba(255,255,255,.045) 0%,
+      rgba(255,255,255,0) 65%),
+    linear-gradient(165deg, #141b2e 0%, #0d1220 48%, #080b14 100%)
+    fixed !important;
+}
+
+body.host:not(:has(.stage))::after{
+  content:'';
+  position:fixed;
+  inset:0;
+  z-index:0;
+  pointer-events:none;
+  background:
+    radial-gradient(ellipse 100% 92% at 50% 46%,
+      transparent 42%, rgba(0,0,0,.34) 80%, rgba(0,0,0,.56) 100%);
+}
+
+/* ---------- Feinschliff ---------- */
+.host .stage,
+.host .panel,
+.host .card,
+.host .karte{
+  backdrop-filter:none;
+}
+
+@media (prefers-reduced-motion: reduce){
+  .host .stage::after{ animation:none !important; }
+}

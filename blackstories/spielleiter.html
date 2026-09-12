@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>Black Stories - Spielleiter</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../eingabeschutz.js"></script>
+<script src="../public-client.js"></script>
+<script src="../server-time.js?v=48"></script>
+
+<script src="../kern-render.js"></script>
+<style>
+  .avatar-pic{
+  width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0;
+  }
+  :root{
+    --bg:#0a0714;
+    --panel:#150e26;
+    --panel-2:#1b1230;
+    --border:rgba(160,130,255,.18);
+    --teal:#3fe6e0; --teal-dim:rgba(63,230,224,.12);
+    --gold:#ffb545; --gold-dim:rgba(255,181,69,.12);
+    --red:#ff3d68; --red-dim:rgba(255,61,104,.12);
+    --green:#4fe6a0; --green-dim:rgba(79,230,160,.12);
+    --purple:#9b6bff; --purple-dim:rgba(155,107,255,.12);
+    --text:#f3eefc; --text-dim:#9d8fc0; --text-faint:#6b5f8a;
+    --font-ui:'Chakra Petch',sans-serif;
+    --font-body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;background:linear-gradient(180deg,#0a0714,#120a20);
+    color:var(--text);font-family:var(--font-body);
+    min-height:100vh;padding:20px 20px 80px;
+  }
+  h1{font-family:var(--font-ui);font-size:22px;margin:0 0 4px;display:flex;align-items:center;gap:10px;}
+  .conn{width:9px;height:9px;border-radius:50%;background:var(--text-faint);}
+  .conn.ok{background:var(--green);box-shadow:0 0 8px var(--green);}
+  .conn.bad{background:var(--red);box-shadow:0 0 8px var(--red);}
+  .sub{color:var(--text-dim);font-size:13px;margin-bottom:24px;}
+
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:980px;margin:0 auto;}
+  @media (max-width:820px){.grid{grid-template-columns:1fr;}}
+  .full{grid-column:1/-1;}
+
+  section{
+    background:var(--panel);border:1px solid var(--border);border-radius:16px;
+    padding:18px 20px;
+  }
+  section h2{
+    font-family:var(--font-ui);font-size:14px;letter-spacing:1px;text-transform:uppercase;
+    color:var(--text-dim);margin:0 0 14px;display:flex;align-items:center;justify-content:space-between;
+  }
+
+  input[type=text],input[type=number]{
+    background:var(--panel-2);border:1px solid var(--border);color:var(--text);
+    border-radius:9px;padding:9px 12px;font-family:var(--font-body);font-size:14px;
+    width:100%;outline:none;
+  }
+  input[type=text]:focus,input[type=number]:focus{border-color:var(--purple);}
+  label{font-size:12px;color:var(--text-faint);display:block;margin-bottom:5px;}
+  .row{display:flex;gap:8px;margin-bottom:10px;}
+  .row > *{flex:1;}
+
+  button{
+    font-family:var(--font-ui);font-weight:600;font-size:13px;letter-spacing:.4px;
+    border-radius:9px;border:1.5px solid var(--border);background:var(--panel-2);
+    color:var(--text);padding:9px 14px;cursor:pointer;transition:all .15s ease;
+  }
+  button:hover{border-color:var(--purple);transform:translateY(-1px);}
+  button:active{transform:translateY(0);}
+  button:disabled{opacity:.35;cursor:not-allowed;transform:none;}
+  button.primary{background:var(--purple-dim);border-color:var(--purple);color:var(--purple);}
+  button.green{background:var(--green-dim);border-color:var(--green);color:var(--green);}
+  button.red{background:var(--red-dim);border-color:var(--red);color:var(--red);}
+  button.gold{background:var(--gold-dim);border-color:var(--gold);color:var(--gold);}
+  button.teal{background:var(--teal-dim);border-color:var(--teal);color:var(--teal);}
+  button.small{padding:5px 9px;font-size:12px;}
+  button.block{width:100%;}
+
+  .player-row{
+    display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:10px;
+    background:var(--panel-2);margin-bottom:6px;border:1px solid transparent;
+  }
+  .player-row.turn{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset;}
+  .player-row .pname{flex:1;font-weight:600;font-size:14px;}
+  .player-row .pscore{font-family:var(--font-ui);font-weight:700;color:var(--teal);min-width:22px;text-align:center;}
+  .player-row .ptools{display:flex;gap:4px;}
+
+  .pool-row{
+    display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;
+    background:var(--panel-2);margin-bottom:6px;
+  }
+  .pool-row.used{opacity:.4;}
+  .pool-row .pcat{font-family:var(--font-ui);font-weight:700;font-size:13px;color:var(--teal);min-width:150px;}
+  .pool-row .pstory{flex:1;font-size:13px;color:var(--text-dim);}
+  .pool-list{max-height:320px;overflow-y:auto;padding-right:4px;}
+
+  .round-box{
+    background:var(--panel-2);border-radius:12px;padding:16px;margin-bottom:14px;
+  }
+  .round-box .cat{font-family:var(--font-ui);color:var(--teal);font-size:13px;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;}
+  .round-box .story{font-size:16px;font-weight:600;line-height:1.5;margin-bottom:10px;}
+  .round-box .solution{font-size:14px;line-height:1.5;color:var(--text-dim);border-top:1px dashed var(--border);padding-top:10px;margin-top:10px;}
+  .round-box .solution .tag{color:var(--gold);font-weight:700;font-family:var(--font-ui);font-size:11px;letter-spacing:1px;display:block;margin-bottom:4px;}
+
+  .turn-banner{
+    display:flex;align-items:center;justify-content:space-between;
+    background:var(--gold-dim);border:1.5px solid var(--gold);border-radius:10px;
+    padding:10px 16px;margin-bottom:14px;
+  }
+  .turn-banner .who{font-family:var(--font-ui);font-weight:700;font-size:17px;color:var(--gold);}
+  .turn-banner .label{font-size:11px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;}
+
+  .jn-row{display:flex;gap:10px;margin-bottom:14px;}
+  .jn-row button{flex:1;padding:16px;font-size:16px;}
+
+  .timer-display{font-family:var(--font-ui);font-size:28px;font-weight:700;color:var(--purple);text-align:center;margin-bottom:10px;}
+  .stat-mini{display:flex;gap:10px;margin-bottom:14px;}
+  .stat-mini .box{flex:1;background:var(--panel-2);border-radius:10px;padding:10px;text-align:center;}
+  .stat-mini .box .n{font-family:var(--font-ui);font-size:22px;font-weight:700;}
+  .stat-mini .box .l{font-size:11px;color:var(--text-faint);letter-spacing:.5px;}
+
+  .empty-hint{color:var(--text-faint);font-size:13px;padding:10px 0;}
+  .danger-zone{margin-top:20px;text-align:center;}
+  .danger-zone button{color:var(--red);border-color:var(--red-dim);}
+</style>
+<link rel="stylesheet" href="../responsive.css" />
+</head>
+<body>
+
+<h1><span class="conn" id="connDot"></span> Black Stories &middot; Spielleiter</h1>
+<div class="sub">Steuerungspanel &ndash; nicht f&uuml;r Zuschauer bestimmt</div>
+
+<div class="grid">
+
+  <section>
+    <h2>Show-Titel</h2>
+    <div class="row">
+      <div><label>Titel</label><input type="text" id="inpTitle" placeholder="BLACK STORIES"></div>
+    </div>
+    <div class="row">
+      <div><label>Untertitel (z.B. Teilnehmer)</label><input type="text" id="inpSubtitle" placeholder="Eli, Rezon, Kroko, Sidney, Rohat & Danny"></div>
+    </div>
+    <button class="primary block" onclick="saveTitle()">Speichern</button>
+  </section>
+
+  <section>
+    <h2>Spieler &amp; Zugreihenfolge</h2>
+    <div class="row">
+      <input type="text" id="inpPlayerName" placeholder="Spielername" onkeydown="if(event.key==='Enter')addPlayer()">
+      <button class="primary" onclick="addPlayer()" style="flex:0 0 auto;">+ Hinzuf&uuml;gen</button>
+    </div>
+    <div id="playerList"></div>
+    <div class="empty-hint" id="playerEmptyHint">Noch keine Spieler. Reihenfolge = Zugreihenfolge (so hinzuf&uuml;gen, wie ihr sitzt/angezeigt werdet).</div>
+  </section>
+
+  <section class="full">
+    <h2>R&auml;tsel-Pool <button class="small teal" onclick="resetPool()">Pool zur&uuml;cksetzen</button></h2>
+    <div class="pool-list" id="poolList"></div>
+  </section>
+
+  <section class="full">
+    <h2>Aktuelle Runde</h2>
+    <div id="roundArea"></div>
+  </section>
+
+  <section>
+    <h2>Timer</h2>
+    <div class="timer-display" id="timerDisplay">01:00</div>
+    <div class="row">
+      <div><label>Dauer (Sekunden)</label><input type="number" id="inpTimerDuration" value="60" min="10" step="5"></div>
+    </div>
+    <div class="row">
+      <button class="green" onclick="timerStart()">Start</button>
+      <button onclick="timerPause()">Pause</button>
+      <button onclick="timerReset()">Reset</button>
+    </div>
+  </section>
+
+  <section>
+    <h2>Partie</h2>
+    <div class="stat-mini">
+      <div class="box"><div class="n" id="miniCorrect" style="color:var(--gold)">0</div><div class="l">GEL&Ouml;ST</div></div>
+      <div class="box"><div class="n" id="miniWrong" style="color:var(--red)">0</div><div class="l">FALSCH (RUNDE)</div></div>
+      <div class="box"><div class="n" id="miniRound" style="color:var(--teal)">0</div><div class="l">RUNDE</div></div>
+    </div>
+    <div class="danger-zone">
+      <button onclick="resetMatch()">Neue Partie (Punkte zur&uuml;cksetzen)</button>
+    </div>
+  </section>
+
+</div>
+
+<script>
+
+const POOL = [
+  { id:'r01', category:'Spiegelbild', story:'Eine Frau schaut in den Spiegel und schreit. Sekunden sp\u00e4ter ist sie tot. Was ist passiert?',
+    solution:'Die Frau arbeitet als Fensterputzerin an einem Hochhaus. Im Halbdunkel erschrickt sie vor ihrem eigenen Spiegelbild auf der Hebeb\u00fchne, macht eine hastige Bewegung, verliert das Gleichgewicht und st\u00fcrzt in die Tiefe.' },
+  { id:'r02', category:'Die letzte Buchung', story:'Ein Mann bucht ein Zimmer im obersten Stock eines Hotels, obwohl er H\u00f6henangst hat. Am n\u00e4chsten Morgen ist er tot. Wieso?',
+    solution:'Der Mann war unheilbar krank und wollte seinem Leben ein Ende setzen, konnte sich aber nicht \u00fcberwinden, selbst zu springen. Er \u00f6ffnete nachts das Fenster und stellte sich bewusst so hin, dass ihn ein Windstoss hinausdr\u00fccken w\u00fcrde.' },
+  { id:'r03', category:'Stummer Zeuge', story:'Ein Papagei ist der einzige Zeuge eines Mordes. Trotzdem wird der T\u00e4ter gefasst, ohne dass der Papagei je etwas gesagt h\u00e4tte. Wie?',
+    solution:'Der Papagei ahmte nach der Tat immer wieder einen bestimmten Handy-Klingelton nach. Die Polizei erkannte den seltenen Ton wieder und konnte darüber den Besitzer des Handys und damit den T\u00e4ter identifizieren.' },
+  { id:'r04', category:'Der leere Tank', story:'Ein Mann f\u00e4hrt mitten in der W\u00fcste mit vollem Tank los und bleibt trotzdem nach wenigen Kilometern liegen. Wieso?',
+    solution:'Jemand hatte \u00fcber Nacht Zucker in seinen Tank gesch\u00fcttet, um ihn zu sabotieren. Der Motor setzte kurz nach der Abfahrt aus.' },
+  { id:'r05', category:'Das stille Konzert', story:'In einem vollen Konzertsaal bricht pl\u00f6tzlich Panik aus, obwohl niemand etwas gesehen oder geh\u00f6rt hat. Was ist geschehen?',
+    solution:'Die L\u00fcftungsanlage hatte einen Defekt und liess Kohlenmonoxid einstr\u00f6men. Mehrere Besucher wurden gleichzeitig ohnm\u00e4chtig, was eine Massenpanik ausl\u00f6ste, bevor jemand die eigentliche Ursache erkannte.' },
+  { id:'r06', category:'Falsche F\u00e4hrte', story:'Ein J\u00e4ger folgt frischen Spuren im Schnee und findet am Ende einen erfrorenen Mann - obwohl die Spuren erst wenige Minuten alt sind. Wie erkl\u00e4rt sich das?',
+    solution:'Der Mann war bereits seit Stunden tot und erfroren im Schnee. Die frischen Spuren stammten von einem Tier, das um die Leiche herumgelaufen war.' },
+  { id:'r07', category:'Der unm\u00f6gliche Anruf', story:'Eine Frau erh\u00e4lt einen Anruf von ihrem eigenen Festnetzanschluss, w\u00e4hrend sie selbst nicht zu Hause ist. Wie ist das m\u00f6glich?',
+    solution:'Ein Einbrecher war in ihre Wohnung eingedrungen und benutzte ihr Telefon, um sich mit seinem Komplizen abzusprechen. Dabei verw\u00e4hlte er sich versehentlich \u00fcber die Kurzwahltaste in ihre eigene Nummer.' },
+  { id:'r08', category:'Die zweite Uhr', story:'Ein Mann tr\u00e4gt zwei Uhren, die exakt dieselbe Zeit anzeigen. Nur so kann sein Mord aufgekl\u00e4rt werden. Wieso?',
+    solution:'Der Mann war Uhrmacher und stellte eine der Uhren extra langsamer, um seine Frau zu \u00fcberf\u00fchren, die ihn regelm\u00e4ssig bestahl. Der Zeitunterschied auf der manipulierten Uhr verriet sp\u00e4ter den genauen Tatzeitpunkt.' },
+  { id:'r09', category:'Das gesunkene Boot', story:'Ein erfahrener Kapit\u00e4n l\u00e4sst sein eigenes, seet\u00fcchtiges Boot bei ruhigem Wetter sinken. Wieso?',
+    solution:'Das Boot war hoch versichert und der Kapit\u00e4n steckte in finanziellen Schwierigkeiten. Er \u00f6ffnete heimlich ein Ventil im Rumpf, um es sinken zu lassen und die Versicherungssumme zu kassieren.' },
+  { id:'r10', category:'Nachtschicht', story:'Ein Nachtw\u00e4chter schliesst jede T\u00fcr im Geb\u00e4ude sorgf\u00e4ltig ab - trotzdem gelingt einem Einbrecher am n\u00e4chsten Morgen der Nachweis, dass er die ganze Nacht drinnen war. Wie?',
+    solution:'Der Einbrecher war schon vor Schichtbeginn ins Geb\u00e4ude gelangt und hatte sich in einem Lagerraum versteckt, den der W\u00e4chter aus Gewohnheit nie kontrollierte, obwohl er ihn jeden Abend verschloss.' },
+  { id:'r11', category:'Der stumme Alarm', story:'In einem Museum l\u00f6st ein wertvolles Gem\u00e4lde den Alarm aus, obwohl niemand es ber\u00fchrt hat. Wieso?',
+    solution:'Die Klimaanlage war ausgefallen, wodurch die Luftfeuchtigkeit im Raum stark anstieg. Die Leinwand dehnte sich dadurch aus und l\u00f6ste den empfindlichen Bewegungssensor direkt vor dem Rahmen aus.' },
+  { id:'r12', category:'Die letzte Nachricht', story:'Eine Frau erh\u00e4lt eine SMS von ihrem verstorbenen Vater, drei Tage nach seiner Beerdigung. Wie ist das m\u00f6glich?',
+    solution:'Der Vater hatte die Nachricht schon Wochen zuvor \u00fcber eine zeitverz\u00f6gerte App verschickt, um ihr an ihrem Geburtstag zu gratulieren, der zuf\u00e4llig auf diesen Tag fiel.' },
+  { id:'r13', category:'Zwei Schl\u00fcssel', story:'Ein Haus hat nur einen einzigen Schl\u00fcssel, trotzdem betreten in derselben Nacht zwei fremde Personen unabh\u00e4ngig voneinander das leere Haus. Wie?',
+    solution:'Der einzige Schl\u00fcssel lag unter der Fussmatte, wo ihn beide Personen unabh\u00e4ngig voneinander zuf\u00e4llig fanden - der eine ein Handwerker, der andere ein Einbrecher.' },
+  { id:'r14', category:'Das schweigende Orchester', story:'Ein Dirigent bricht mitten im Konzert zusammen, obwohl er kerngesund war. Das ganze Orchester wusste sofort, was los war, und half richtig. Wieso?',
+    solution:'Der Dirigent ist Diabetiker und hatte ein vorher mit dem Orchester abgesprochenes Zeichen f\u00fcr einen Unterzuckerungs-Notfall gegeben, kurz bevor er zusammenbrach. Die Musiker erkannten das Zeichen und reagierten sofort mit Traubenzucker.' },
+  { id:'r15', category:'Die falsche Spur', story:'Nach einem Einbruch findet die Polizei nur die Fussspuren des Opfers im Schnee - trotzdem war es eindeutig kein Selbstmord. Wie erkl\u00e4rt sich das?',
+    solution:'Der T\u00e4ter hatte sich r\u00fcckw\u00e4rts in den eigenen Fussspuren des Opfers vom Tatort entfernt, indem er dessen Schuhe trug, sodass die Spuren wie ein einziger, unauff\u00e4lliger Hin- und R\u00fcckweg aussahen.' },
+  { id:'r16', category:'Stiller Partner', story:'Zwei Gesch\u00e4ftspartner unterschreiben denselben Vertrag - einer wird reich, der andere verhaftet. Beide haben denselben Text gelesen. Wieso?',
+    solution:'Der eine Partner hatte in letzter Sekunde eine unauff\u00e4llige Zusatzklausel einf\u00fcgen lassen, die dem anderen s\u00e4mtliche Verbindlichkeiten und Altlasten der Firma zuschob, w\u00e4hrend er selbst rechtlich sauber ausstieg.' },
+];
+
+function defaultState(){
+  return {
+    meta:{ title:'BLACK STORIES', subtitle:'', round:0, phase:'idle' },
+    timer:{ duration:60, remaining:60, running:false, startedAt:null },
+    riddle:{ id:null, category:'', story:'', solution:'' },
+    stats:{ correctTotal:0, wrongRound:0 },
+    players:[],
+    turnIndex:0,
+    lastEntry:{ result:null, ts:0 },
+    usedRiddleIds:[]
+  };
+}
+
+let bsActionBusy = false;
+let state = defaultState();
+let timerTickHandle = null;
+
+renderPool();
+
+let sb = null;
+
+function showFatalConnError(msg){
+  setConn(false);
+  document.getElementById('roundArea').innerHTML =
+    `<div class="empty-hint" style="color:var(--red)">${escapeHtml(msg)}<br>URL/Key oben im Code pr\u00fcfen (host.html und spielleiter.html m\u00fcssen dieselben haben), Internetverbindung pr\u00fcfen, oder Konsole (F12) f\u00fcr Details öffnen.</div>`;
+}
+
+try {
+  if(typeof window.supabase === 'undefined'){
+    throw new Error('Supabase-Bibliothek konnte nicht geladen werden (CDN nicht erreichbar?)');
+  }
+  sb = window.KA_SB;
+
+  sb.channel('bs_state_gm')
+    .on('postgres_changes', { event:'UPDATE', schema:'public', table:'bs_state', filter:'id=eq.main' }, payload => {
+      state = { ...defaultState(), ...(payload.new.data || {}) };
+      renderAll();
+    })
+    .subscribe(status => setConn(status === 'SUBSCRIBED'));
+
+  loadState();
+} catch(err){
+  console.error(err);
+  showFatalConnError(err.message);
+}
+
+async function loadState(){
+  const { data, error } = await sb.from('bs_state').select('data').eq('id','main').limit(1).maybeSingle();
+  if(error){
+    console.error(error);
+    showFatalConnError('Keine Verbindung zu Supabase: ' + error.message);
+    return;
+  }
+  setConn(true);
+  if(!data){
+    state = defaultState();
+    const { error: initError } = await sb.from('bs_state').insert({ id:'main', data:state, updated_at:new Date().toISOString() });
+    if(initError){
+      console.error(initError);
+      showFatalConnError('Black Stories konnte keinen Spielstand anlegen: ' + initError.message);
+      return;
+    }
+  } else if(!data.data || Object.keys(data.data).length === 0){
+    state = defaultState();
+    await sb.from('bs_state').update({ data: state, updated_at:new Date().toISOString() }).eq('id','main');
+  } else {
+    state = { ...defaultState(), ...data.data };
+  }
+  document.getElementById('inpTitle').value = state.meta.title || '';
+  document.getElementById('inpSubtitle').value = state.meta.subtitle || '';
+  document.getElementById('inpTimerDuration').value = state.timer.duration || 60;
+  renderAll();
+}
+
+function setConn(ok){
+  document.getElementById('connDot').className = 'conn ' + (ok ? 'ok' : 'bad');
+}
+
+async function patchState(patch){
+  if(!sb){ alert('Keine Supabase-Verbindung. Seite neu laden oder Zugangsdaten pr\u00fcfen.'); return; }
+  state = { ...state, ...patch };
+  const { error } = await sb.from('bs_state').update({ data: state, updated_at:new Date().toISOString() }).eq('id','main');
+  if(error){ console.error(error); alert('Fehler beim Speichern: ' + error.message); }
+}
+
+async function saveTitle(){
+  const title = document.getElementById('inpTitle').value.trim() || 'BLACK STORIES';
+  const subtitle = document.getElementById('inpSubtitle').value.trim();
+  await patchState({ meta:{ ...state.meta, title, subtitle } });
+}
+
+
+async function syncPublicPlayers(){
+  const {data}=await sb.from('public_players').select('name').eq('format','blackstories').eq('active',true); if(!data)return;
+  const latest=await sb.from('bs_state').select('data').eq('id','main').maybeSingle();
+  if(latest.data?.data) state=latest.data.data;
+  if(!state)return;
+  const have=new Set((state.players||[]).map(p=>p.name)); const add=data.filter(r=>!have.has(r.name));
+  if(add.length) await patchState({players:[...(state.players||[]),...add.map(r=>({name:r.name,score:0}))]});
+}
+setInterval(syncPublicPlayers,1800); setTimeout(syncPublicPlayers,600);
+
+async function addPlayer(){
+  const inp = document.getElementById('inpPlayerName');
+  const name = inp.value.trim();
+  if(!name) return;
+  inp.value = '';
+  await patchState({ players:[ ...state.players, { name, score:0 } ] });
+  renderPlayers();
+}
+async function movePlayer(i, dir){
+  const players = [...state.players];
+  const j = i + dir;
+  if(j < 0 || j >= players.length) return;
+  [players[i], players[j]] = [players[j], players[i]];
+  await patchState({ players });
+  renderPlayers();
+}
+async function removePlayer(i){
+  const removed = state.players[i];
+  const players = state.players.filter((_,idx) => idx !== i);
+  let turnIndex = state.turnIndex;
+  if(turnIndex >= players.length) turnIndex = 0;
+  if(removed?.name){
+    try { await sb.rpc('deactivate_public_player', { p_name:removed.name, p_format:'blackstories' }); } catch(e) {}
+  }
+  await patchState({ players, turnIndex });
+  renderAll();
+}
+async function adjustScore(i, delta){
+  const players = state.players.map((p,idx) => idx === i ? { ...p, score: Math.max(0, p.score + delta) } : p);
+  await patchState({ players });
+  renderPlayers();
+}
+
+const spielerListe = KernRender.liste(document.getElementById('playerList'), {
+  schluessel: p => p.name,
+  erstellen: () => {
+    const el = document.createElement('div');
+    el.className = 'player-row';
+    el.innerHTML = `
+      <span class="pname"></span>
+      <span class="pscore"></span>
+      <div class="ptools">
+        <button class="small" data-minus>&minus;</button>
+        <button class="small" data-plus>+</button>
+        <button class="small" data-up>&uarr;</button>
+        <button class="small" data-down>&darr;</button>
+        <button class="small red" data-del>&times;</button>
+      </div>`;
+    return el;
+  },
+  aktualisieren: (el, p, i) => {
+    const dran = state.meta.phase === 'active' && i === state.turnIndex;
+    el.className = `player-row ${dran ? 'turn' : ''}`;
+    KernRender.textWennGeaendert(el.querySelector('.pname'), p.name);
+    KernRender.textWennGeaendert(el.querySelector('.pscore'), p.score);
+    el.querySelector('[data-minus]').onclick = () => adjustScore(i, -1);
+    el.querySelector('[data-plus]').onclick = () => adjustScore(i, 1);
+    el.querySelector('[data-up]').onclick = () => movePlayer(i, -1);
+    el.querySelector('[data-down]').onclick = () => movePlayer(i, 1);
+    el.querySelector('[data-del]').onclick = () => removePlayer(i);
+  }
+});
+
+function renderPlayers(){
+  const hint = document.getElementById('playerEmptyHint');
+  hint.style.display = state.players.length ? 'none' : 'block';
+  spielerListe.render(state.players);
+}
+
+function renderPool(){
+  const list = document.getElementById('poolList');
+  list.innerHTML = POOL.map(r => {
+    const used = state.usedRiddleIds.includes(r.id);
+    return `
+    <div class="pool-row ${used?'used':''}">
+      <span class="pcat">${escapeHtml(r.category)}</span>
+      <span class="pstory">${escapeHtml(r.story)}</span>
+      <button class="teal small" onclick="startRiddle('${r.id}')">${used ? 'Erneut starten' : 'Starten'}</button>
+    </div>`;
+  }).join('');
+}
+async function resetPool(){
+  await patchState({ usedRiddleIds: [] });
+  renderPool();
+}
+async function startRiddle(id){
+  const r = POOL.find(x => x.id === id);
+  if(!r) return;
+  if(!state.players.length){ alert('Bitte zuerst mindestens einen Spieler hinzuf\u00fcgen.'); return; }
+  const round = (state.meta.round || 0) + 1;
+  const usedRiddleIds = [...new Set([...state.usedRiddleIds, id])];
+  const startIndex = (round - 1) % state.players.length;
+  await patchState({
+    meta:{ ...state.meta, round, phase:'active' },
+    riddle:{ id:r.id, category:r.category, story:r.story, solution:'' },
+    stats:{ ...state.stats, wrongRound:0 },
+    lastEntry:{ result:null, ts:0 },
+    turnIndex: startIndex,
+    usedRiddleIds
+  });
+  renderAll();
+}
+
+async function markEntry(result){
+  if(bsActionBusy || state.meta.phase !== 'active' || !state.players.length) return;
+  bsActionBusy = true;
+  const patch = { lastEntry:{ result, ts:KA_NOW() } };
+  if(result === 'nein'){
+    patch.stats = { ...state.stats, wrongRound:(state.stats.wrongRound||0)+1 };
+    patch.turnIndex = (state.turnIndex + 1) % state.players.length;
+  }
+  try { await patchState(patch); renderAll(); } finally { bsActionBusy = false; }
+}
+async function solveRiddle(winnerIndex){
+  if(bsActionBusy || state.meta.phase !== 'active') return;
+  bsActionBusy = true;
+  const r = POOL.find(x => x.id === state.riddle.id);
+  if(!r){ bsActionBusy=false; return; }
+  const players = state.players.map((p,i) => i === winnerIndex ? { ...p, score:p.score+1 } : p);
+  try { await patchState({
+    meta:{ ...state.meta, phase:'solved' },
+    riddle:{ ...state.riddle, solution:r.solution },
+    stats:{ ...state.stats, correctTotal:(state.stats.correctTotal||0)+1 },
+    players
+  });
+  renderAll(); } finally { bsActionBusy = false; }
+}
+async function revealWithoutPoint(){
+  if(bsActionBusy || state.meta.phase !== 'active') return;
+  bsActionBusy = true;
+  const r = POOL.find(x => x.id === state.riddle.id);
+  if(!r){ bsActionBusy=false; return; }
+  try { await patchState({
+    meta:{ ...state.meta, phase:'solved' },
+    riddle:{ ...state.riddle, solution:r.solution }
+  });
+  renderAll(); } finally { bsActionBusy = false; }
+}
+async function prepareNextRound(){
+  await patchState({
+    meta:{ ...state.meta, phase:'idle' },
+    riddle:{ id:null, category:'', story:'', solution:'' }
+  });
+  renderAll();
+}
+
+function renderRound(){
+  const area = document.getElementById('roundArea');
+  const phase = state.meta.phase;
+
+  if(phase === 'idle' || !state.riddle.id){
+    area.innerHTML = `<div class="empty-hint">Kein aktives R\u00e4tsel. W\u00e4hle oben eins aus dem Pool.</div>`;
+    return;
+  }
+
+  const r = POOL.find(x => x.id === state.riddle.id);
+  const solutionText = r ? r.solution : '';
+  const turnPlayer = state.players[state.turnIndex];
+
+  let html = `<div class="round-box">
+    <div class="cat">${escapeHtml(state.riddle.category)}</div>
+    <div class="story">${escapeHtml(state.riddle.story)}</div>
+    <div class="solution"><span class="tag">L\u00f6sung (nur f\u00fcr dich)</span>${escapeHtml(solutionText)}</div>
+  </div>`;
+
+  if(phase === 'active'){
+    html += `<div class="turn-banner">
+      <div><div class="label">Am Zug</div><div class="who">${turnPlayer ? escapeHtml(turnPlayer.name) : '&ndash;'}</div></div>
+    </div>
+    <div class="jn-row">
+      <button class="green" onclick="markEntry('ja')">Ja</button>
+      <button class="red" onclick="markEntry('nein')">Nein</button>
+    </div>
+    <div class="row">
+      <select id="selWinner" style="flex:1;background:var(--panel-2);color:var(--text);border:1px solid var(--border);border-radius:9px;padding:9px;">
+        ${state.players.map((p,i) => `<option value="${i}" ${i===state.turnIndex?'selected':''}>${escapeHtml(p.name)}</option>`).join('')}
+      </select>
+      <button class="gold" onclick="solveRiddle(parseInt(document.getElementById('selWinner').value,10))">Gel\u00f6st! Punkt vergeben</button>
+    </div>
+    <button class="block" style="margin-top:8px;" onclick="revealWithoutPoint()">Aufl\u00f6sen ohne Punkt</button>`;
+  } else if(phase === 'solved'){
+    html += `<button class="primary block" onclick="prepareNextRound()">N\u00e4chste Runde vorbereiten</button>`;
+  }
+
+  area.innerHTML = html;
+}
+
+function currentRemaining(t){
+  if(!t) return 60;
+  if(t.running && t.startedAt){
+    const elapsed = (KA_NOW() - t.startedAt) / 1000;
+    return Math.max(0, t.duration - elapsed);
+  }
+  return t.remaining ?? t.duration ?? 60;
+}
+function fmtTime(sec){
+  sec = Math.max(0, Math.round(sec));
+  const m = Math.floor(sec/60).toString().padStart(2,'0');
+  const s = (sec%60).toString().padStart(2,'0');
+  return `${m}:${s}`;
+}
+function tickTimer(){
+  document.getElementById('timerDisplay').textContent = fmtTime(currentRemaining(state.timer));
+}
+async function timerStart(){
+  if(window.KA_TIME && KA_TIME.ready) await KA_TIME.ready;
+  const duration = parseInt(document.getElementById('inpTimerDuration').value,10) || 60;
+  await patchState({ timer:{ duration, remaining:duration, running:true, startedAt:KA_NOW() } });
+}
+async function timerPause(){
+  const remaining = currentRemaining(state.timer);
+  await patchState({ timer:{ ...state.timer, running:false, remaining, startedAt:null } });
+}
+async function timerReset(){
+  const duration = parseInt(document.getElementById('inpTimerDuration').value,10) || 60;
+  await patchState({ timer:{ duration, remaining:duration, running:false, startedAt:null } });
+}
+
+async function resetMatch(){
+  if(!confirm('Neue Partie starten? Alle Punkte werden auf 0 gesetzt, R\u00e4tsel-Pool wird freigegeben.')) return;
+  const players = state.players.map(p => ({ ...p, score:0 }));
+  await patchState({
+    meta:{ ...state.meta, round:0, phase:'idle' },
+    timer:{ duration:60, remaining:60, running:false, startedAt:null },
+    riddle:{ id:null, category:'', story:'', solution:'' },
+    stats:{ correctTotal:0, wrongRound:0 },
+    players,
+    turnIndex:0,
+    lastEntry:{ result:null, ts:0 },
+    usedRiddleIds:[]
+  });
+  renderAll();
+}
+
+function escapeHtml(str){
+  const d = document.createElement('div');
+  d.textContent = str ?? '';
+  return d.innerHTML;
+}
+
+function renderAll(){
+  renderPlayers();
+  renderPool();
+  renderRound();
+  tickTimer();
+  document.getElementById('miniCorrect').textContent = state.stats.correctTotal || 0;
+  document.getElementById('miniWrong').textContent = state.stats.wrongRound || 0;
+  document.getElementById('miniRound').textContent = state.meta.round || 0;
+}
+
+clearInterval(timerTickHandle);
+timerTickHandle = setInterval(tickTimer, 500);
+
+loadState();
+</script>
+<script src="../zurueck.js"></script>
+<script src="../hintergrund.js"></script>
+
+
+
+<script>
+  if(window.SpielBeenden) SpielBeenden.init({
+    format: 'blackstories',
+    sammle: async function () {
+      const { data } = await sb.from('bs_state').select('data').eq('id', 'main').limit(1).maybeSingle();
+      const players = (data && data.data && data.data.players) || [];
+      return players.map(function (p) {
+        return { spieler: p.name, punkte: p.score || 0 };
+      });
+    }
+  });
+</script>
+
+<script>
+// Turnier: Rolle merken und auf Formatwechsel horchen.
+// Schaltet der Spielleiter weiter, springt dieses Geraet mit.
+if(window.TURNIER){
+  TURNIER.setzeRolle('sl');
+  TURNIER.starte(typeof sb !== "undefined" ? sb : null);
+}
+</script>
+<script src="../active-stream-mode.js?v=48"></script>
+</body>
+</html>

@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>WWM — Spielleiter</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@500;700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../public-client.js"></script>
+
+<script src="../crew.js"></script>
+<script src="questions.js"></script>
+<script src="../kern-korrektur.js"></script>
+<style>
+  :root{
+    --bg:#0a0e1a; --panel:#12172a; --panel-border:#232b45;
+    --ink:#eef1f8; --muted:#6b7488; --accent:#00e5c7;
+    --gold:#f5c542; --spy:#6c5ce7; --risk:#c44dff;
+    --good:#22c55e; --bad:#ff3860;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-serif;padding:24px;min-height:100vh;}
+  h1{font-family:'Anton',sans-serif;letter-spacing:2px;font-size:24px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:12px;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:20px;}
+
+  .grid{display:grid;grid-template-columns:1.3fr 1fr;gap:18px;max-width:1200px;}
+  .card{background:var(--panel);border:1px solid var(--panel-border);border-radius:14px;padding:18px;}
+  .card h2{
+    font-family:'Anton',sans-serif;font-size:13px;letter-spacing:2px;text-transform:uppercase;
+    color:var(--muted);margin:0 0 14px;padding-bottom:8px;border-bottom:1px solid var(--panel-border);
+  }
+
+  .qmeta{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:8px;
+         letter-spacing:1px;text-transform:uppercase;font-weight:700;}
+  .qtext{font-size:17px;font-weight:700;line-height:1.4;margin-bottom:14px;min-height:48px;}
+  .opt{
+    display:flex;align-items:center;gap:10px;padding:10px 12px;margin-bottom:7px;
+    background:#0d1220;border:1px solid var(--panel-border);border-radius:10px;font-size:14px;
+  }
+  .opt .l{font-family:'Anton',sans-serif;color:var(--accent);width:18px;}
+  .opt.right{border-color:var(--good);background:rgba(34,197,94,.1);}
+  .opt .who{margin-left:auto;display:flex;gap:-6px;}
+  .opt .who img{width:24px;height:24px;border-radius:50%;border:2px solid var(--panel);margin-left:-8px;}
+
+  .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}
+  button{
+    font-family:'Inter',sans-serif;font-weight:900;font-size:13px;letter-spacing:.5px;
+    border:none;border-radius:10px;padding:12px 16px;cursor:pointer;min-height:42px;
+    background:#1b2136;color:var(--ink);border:1px solid var(--panel-border);
+    transition:filter .15s;
+  }
+  button:hover:not(:disabled){filter:brightness(1.3);}
+  button:disabled{opacity:.35;cursor:default;}
+  button.go{background:var(--accent);color:#06231e;border-color:transparent;}
+  button.solve{background:var(--gold);color:#2b2000;border-color:transparent;}
+  button.danger{background:transparent;border-color:var(--bad);color:var(--bad);}
+
+  .plist{display:flex;flex-direction:column;gap:8px;}
+  .p{
+    display:flex;align-items:center;gap:10px;padding:10px 12px;
+    background:#0d1220;border:1px solid var(--panel-border);border-radius:10px;
+  }
+  .p img{width:32px;height:32px;border-radius:50%;}
+  .p .n{font-weight:700;font-size:14px;}
+  .p .badge{
+    font-size:10px;font-weight:900;padding:3px 8px;border-radius:6px;letter-spacing:.5px;
+  }
+  .p .badge.ok{background:rgba(34,197,94,.18);color:var(--good);}
+  .p .badge.no{background:rgba(255,56,96,.16);color:var(--bad);}
+  .p .badge.wait{background:#1b2136;color:var(--muted);}
+  .p .jk{margin-left:auto;display:flex;gap:4px;}
+  .p .jk span{
+    width:20px;height:20px;border-radius:5px;display:flex;align-items:center;justify-content:center;
+    font-size:10px;border:1px solid;
+  }
+  .jk .j5050{border-color:var(--gold);color:var(--gold);}
+  .jk .jspy{border-color:var(--spy);color:var(--spy);}
+  .jk .jrisk{border-color:var(--risk);color:var(--risk);}
+  .jk .spent{opacity:.2;}
+  .p .sc{font-family:'Anton',sans-serif;font-size:19px;color:var(--accent);min-width:34px;text-align:right;}
+  .p .kick{
+    background:transparent;border:1px solid var(--panel-border);color:var(--muted);
+    width:26px;height:26px;min-height:0;padding:0;border-radius:7px;
+    font-size:14px;line-height:1;cursor:pointer;flex:0 0 26px;
+  }
+  .p .kick:hover{border-color:var(--bad);color:var(--bad);background:rgba(255,56,96,.08);}
+
+  .note{
+    margin-top:12px;font-size:12px;color:var(--muted);line-height:1.6;
+    padding:10px;border:1px dashed var(--panel-border);border-radius:10px;
+  }
+  .note b{color:var(--ink);}
+
+  @media (max-width:820px){
+    body{padding:14px;}
+    .grid{grid-template-columns:1fr;}
+  }
+</style>
+<link rel="stylesheet" href="../responsive.css" />
+<link rel="stylesheet" href="../kern-korrektur.css" />
+</head>
+<body>
+
+<h1>WER WIRD MILLIONÄR</h1>
+<div class="sub">Spielleiter</div>
+
+<div class="grid">
+
+  <div class="card">
+    <h2>Aktuelle Frage</h2>
+    <div class="qmeta">
+      <span id="qnum">Keine Frage</span>
+      <span id="qval">– Punkte</span>
+    </div>
+    <div class="qtext" id="qtext">Spiel noch nicht gestartet.</div>
+    <div id="opts"></div>
+
+    <div class="row">
+      <button class="go" id="btnNext">Nächste Frage</button>
+      <button class="solve" id="btnSolve">Auflösen &amp; werten</button>
+      <button id="btnPrev">Zurück</button>
+      <button class="danger" id="btnReset">Reset</button>
+    </div>
+
+    <div class="note" id="jokerNote">Kein Joker in dieser Runde.</div>
+  </div>
+
+  <div class="card">
+    <h2>Spieler</h2>
+    <div class="plist" id="plist"></div>
+    <div class="note">
+      Punkte werden beim <b>Auflösen</b> automatisch verrechnet.<br>
+      Richtig: volle Punkte · Falsch: keine · <b>Risk</b>: doppelt bzw. Minus.
+    </div>
+    <div id="korrekturPanel"></div>
+  </div>
+
+</div>
+
+<script>
+const sb = window.KA_SB;
+let autoAufloesen = false;
+
+const LETTERS = ['A','B','C','D'];
+let state = null;
+let wwmSolveBusy = false;
+
+async function load(){
+  const { data, error } = await sb.from('wwm_state').select('state').eq('id',1).single();
+  // Bei Lesefehler den alten Stand behalten statt ihn zu leeren.
+  // Frueher wurde hier {} gesetzt - der naechste save() hat damit
+  // den kompletten Spielstand ueberschrieben.
+  if(error || !data || !data.state){
+    console.warn('wwm_state konnte nicht gelesen werden:', error && error.message);
+    return null;
+  }
+  state = data.state;
+  state.players = state.players || {};
+  state.answers = state.answers || {};
+  state.gone = state.gone || {};
+  state.usedJoker = state.usedJoker || null;
+  return state;
+}
+async function save(s){
+  await sb.from('wwm_state').update({ state:s, updated_at:new Date().toISOString() }).eq('id',1);
+  state = s;
+}
+
+async function nextQ(){
+  const s = await load();
+  if(!s) return;
+  const next = (s.qIndex == null) ? 0 : s.qIndex + 1;
+  if(next >= WWM_FRAGEN.length){ alert('Alle 30 Fragen gespielt.'); return; }
+  s.qIndex = next;
+  s.phase = 'frage';
+  s.answers = {};
+  s.gone = {};
+  s.usedJoker = null;
+  await save(s);
+  render();
+}
+
+async function prevQ(){
+  const s = await load();
+  if(!s) return;
+  if(s.qIndex == null || s.qIndex === 0) return;
+  s.qIndex -= 1;
+  s.phase = 'frage';
+  s.answers = {};
+  s.gone = {};
+  s.usedJoker = null;
+  await save(s);
+  render();
+}
+
+async function solve(){
+  if(wwmSolveBusy) return;
+  wwmSolveBusy = true;
+  const s = await load();
+  if(!s){ wwmSolveBusy=false; return; }
+  if(s.phase !== 'frage' || s.qIndex == null){ wwmSolveBusy=false; return; }
+  const q = WWM_FRAGEN[s.qIndex];
+  const punkte = wwmPunkte(s.qIndex);
+  try {
+    const {data,error}=await sb.rpc('wwm_solve',{p_q_index:s.qIndex,p_correct_index:q.richtig,p_points:punkte});
+    if(error){console.error('wwm_solve:',error.message);return;}
+    if(data){state=data;render();}
+  } finally { wwmSolveBusy = false; }
+}
+
+async function kick(name){
+  if(!confirm(`${name} aus dem Spiel entfernen? Punkte und Joker gehen verloren.`)) return;
+  const s = await load();
+  if(!s) return;
+  delete s.players[name];
+  delete s.answers[name];
+  delete s.gone[name];
+
+  if(s.usedJoker && s.usedJoker.name === name) s.usedJoker = null;
+  await save(s);
+  try { await sb.rpc('deactivate_public_player', { p_name:name, p_format:'millionaer' }); } catch(e) {}
+  render();
+}
+
+async function reset(){
+  if(!confirm('Spiel komplett zurücksetzen? Alle Punkte und Joker werden neu vergeben.')) return;
+  const s = await load();
+  if(!s) return;
+  Object.keys(s.players).forEach(n => {
+    s.players[n] = { score:0, jokers:{ '5050':true, 'spy':true, 'risk':true } };
+  });
+  s.qIndex = null;
+  s.phase = 'warten';
+  s.answers = {};
+  s.gone = {};
+  s.usedJoker = null;
+  await save(s);
+  render();
+}
+
+function render(){
+  if(!state) return;
+  const q = (state.qIndex != null) ? WWM_FRAGEN[state.qIndex] : null;
+  const phase = state.phase || 'warten';
+
+  document.getElementById('qnum').textContent =
+    q ? `Frage ${state.qIndex+1} / ${WWM_FRAGEN.length}` : 'Keine Frage';
+  document.getElementById('qval').textContent =
+    q ? `${wwmPunkte(state.qIndex)} Punkte` : '– Punkte';
+  document.getElementById('qtext').textContent =
+    q ? q.frage : 'Spiel noch nicht gestartet.';
+
+  const opts = document.getElementById('opts');
+  if(!q){
+    opts.innerHTML = '';
+  } else {
+    // Nur neu bauen, wenn sich Frage oder Waehler wirklich geaendert
+    // haben - sonst wuerden die Waehler-Avatare bei jedem Tick neu
+    // laden, obwohl sich nichts aendert.
+    const signatur = state.qIndex + '|' + JSON.stringify(state.answers);
+    if(opts.dataset.sig !== signatur){
+      opts.dataset.sig = signatur;
+      opts.innerHTML = q.antworten.map((txt,i) => {
+        const waehler = Object.entries(state.answers).filter(([,a]) => a === i).map(([n]) => n);
+        const imgs = waehler.map(n => {
+          const av = avatarFor(n);
+          return av ? `<img src="${av}" title="${n}" alt="${n}">` : '';
+        }).join('');
+        return `<div class="opt ${i===q.richtig?'right':''}">
+          <span class="l">${LETTERS[i]}</span><span>${txt}</span>
+          <span class="who">${imgs}</span>
+        </div>`;
+      }).join('');
+    }
+  }
+
+  const jn = document.getElementById('jokerNote');
+  if(state.usedJoker){
+    const label = { '5050':'50/50', 'spy':'Spy', 'risk':'Risk' }[state.usedJoker.typ];
+    jn.innerHTML = `<b>${state.usedJoker.name}</b> hat den <b>${label}</b>-Joker gezückt. Diese Runde ist für alle anderen blockiert.`;
+  } else {
+    jn.textContent = 'Kein Joker in dieser Runde.';
+  }
+
+  const pl = document.getElementById('plist');
+  const namen = Object.keys(state.players);
+
+  // Haben alle geantwortet, loest die Frage von selbst auf.
+  // Der Knopf bleibt, falls jemand aussetzt oder du frueher willst.
+  if(phase === 'frage' && namen.length && !autoAufloesen){
+    const offen = namen.filter(n => state.answers[n] == null);
+    if(offen.length === 0){
+      autoAufloesen = true;
+      setTimeout(async () => {
+        autoAufloesen = false;
+        const s2 = await load();
+        if(!s2 || s2.phase !== 'frage') return;
+        const nochOffen = Object.keys(s2.players).filter(n => s2.answers[n] == null);
+        if(nochOffen.length === 0) await solve();
+      }, 1200);
+    }
+  }
+  pl.innerHTML = !namen.length
+    ? '<div style="color:var(--muted);font-size:13px;">Noch niemand beigetreten.</div>'
+    : namen.map(n => {
+        const p = state.players[n];
+        const a = state.answers[n];
+        const av = avatarFor(n);
+        let badge = '<span class="badge wait">offen</span>';
+        if(a != null){
+          if(phase === 'aufgeloest' && q){
+            badge = (a === q.richtig)
+              ? `<span class="badge ok">${LETTERS[a]} richtig</span>`
+              : `<span class="badge no">${LETTERS[a]} falsch</span>`;
+          } else {
+            badge = `<span class="badge wait">${LETTERS[a]} gewählt</span>`;
+          }
+        }
+        const jk = ['5050','spy','risk'].map(t => {
+          const ico = { '5050':'◑', 'spy':'🕵', 'risk':'🎲' }[t];
+          const cls = 'j' + t + (p.jokers[t] ? '' : ' spent');
+          return `<span class="${cls}">${ico}</span>`;
+        }).join('');
+        return `<div class="p">
+          ${av ? `<img src="${av}" alt="">` : ''}
+          <span class="n">${n}</span>
+          ${badge}
+          <span class="jk">${jk}</span>
+          <span class="sc">${p.score}</span>
+          <button class="kick" data-kick="${n}" title="Spieler entfernen">✕</button>
+        </div>`;
+      }).join('');
+
+  pl.querySelectorAll('.kick').forEach(b => {
+    b.onclick = () => kick(b.dataset.kick);
+  });
+
+  document.getElementById('btnSolve').disabled = (phase !== 'frage' || !q);
+  document.getElementById('btnPrev').disabled = (state.qIndex == null || state.qIndex === 0);
+  document.getElementById('btnNext').textContent =
+    (state.qIndex == null) ? 'Spiel starten' : 'Nächste Frage';
+
+  // Freier Eingriff: Punkte manuell korrigieren. Panel nur neu bauen,
+  // wenn sich die Spielerliste wirklich geaendert hat - sonst wuerde
+  // es bei jedem Render wieder einklappen und Handler neu anhaengen.
+  const spielerNamen = Object.keys(state.players || {});
+  const signatur = spielerNamen.join(',');
+  if(signatur !== window.__korrekturSig){
+    window.__korrekturSig = signatur;
+    KernKorrektur.einbauen({
+      container: document.getElementById('korrekturPanel'),
+      spieler: () => spielerNamen,
+      aufPunkteAendern: async (name, delta) => {
+        const s = await load();
+        if(!s || !s.players[name]) return;
+        s.players[name].score = (s.players[name].score || 0) + delta;
+        await save(s);
+      }
+    });
+  }
+}
+
+document.getElementById('btnNext').onclick = nextQ;
+document.getElementById('btnPrev').onclick = prevQ;
+document.getElementById('btnSolve').onclick = solve;
+document.getElementById('btnReset').onclick = reset;
+
+async function tick(){ const s = await load(); if(!s) return; render(); }
+tick();
+setInterval(tick, 1500);
+sb.channel('wwm_sl')
+  .on('postgres_changes', { event:'*', schema:'public', table:'wwm_state' }, () => tick())
+  .subscribe();
+</script>
+<script src="../zurueck.js"></script>
+<script src="../hintergrund.js"></script>
+
+
+
+<script>
+  if(window.SpielBeenden) SpielBeenden.init({
+    format: 'millionaer',
+    sammle: async function () {
+      const { data } = await sb.from('wwm_state').select('state').eq('id', 1).single();
+      const players = (data && data.state && data.state.players) || {};
+      return Object.entries(players).map(function (e) {
+        const v = e[1];
+        const punkte = (v && typeof v === 'object') ? (v.score || 0) : (v || 0);
+        return { spieler: e[0], punkte: punkte };
+      });
+    }
+  });
+</script>
+
+<script>
+// Turnier: Rolle merken und auf Formatwechsel horchen.
+// Schaltet der Spielleiter weiter, springt dieses Geraet mit.
+if(window.TURNIER){
+  TURNIER.setzeRolle('sl');
+  TURNIER.starte(typeof sb !== "undefined" ? sb : null);
+}
+</script>
+<script src="../active-stream-mode.js?v=48"></script>
+</body>
+</html>

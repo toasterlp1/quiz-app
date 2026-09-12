@@ -1,0 +1,435 @@
+/* ============================================================
+   Quiz-App - zentrale Handy-Anpassung
+   Gilt fuer alle Seiten: Host, Spielleiter, Buzzer, Uebersichten
+   ============================================================ */
+
+html{
+  -webkit-text-size-adjust:100%;
+  text-size-adjust:100%;
+}
+body{
+  -webkit-tap-highlight-color:transparent;
+}
+img,svg,video,canvas{max-width:100%;}
+*,*::before,*::after{box-sizing:border-box;}
+
+@media (hover:none){
+  *:hover{transition-duration:0s;}
+}
+
+/* ============================================================
+   HOST-SEITEN
+   Die Host-Layouts rechnen ueber --u: 1vw. Auf dem Desktop
+   (1920px) ist 1vw = 19px, auf dem Handy hochkant (390px) nur
+   3.9px - alles schrumpft auf ein Fuenftel. Loesung: --u im
+   Hochformat an die Hoehe koppeln statt an die Breite.
+   ============================================================ */
+@media (max-width:900px) and (orientation:portrait){
+  :root, html.host, body.host{
+    /* 1.15vh statt 1vw: auf 844px Hoehe ergibt das 9.7px pro Einheit.
+       Damit landen die real genutzten Multiplikatoren (1.7 bis 6.2)
+       bei 16px fuer kleine Labels und 60px fuer grosse Logos. */
+    --u: 1.15vh;
+  }
+  html.host, body.host{
+    width:100%;
+    min-height:100%;
+    overflow-x:hidden;
+  }
+  .host .stage{
+    width:100% !important;
+    max-width:100% !important;
+    min-height:100vh;
+    height:auto !important;
+    padding:2vh 3vw 3vh !important;
+    overflow-x:hidden;
+    overflow-y:auto;
+  }
+
+  .host .title, .host .logo, .host h1, .host .titel, .host .brand{
+    font-size:clamp(22px, 4.4vh, 46px) !important;
+    letter-spacing:1px !important;
+    line-height:1.05 !important;
+  }
+  .host .show-title{font-size:clamp(16px, 2.6vh, 26px) !important;}
+  .host .show-subtitle{font-size:clamp(12px, 1.9vh, 18px) !important;}
+
+  .host .frage, .host .question, .host .story-text, .host .hint-word,
+  .host .situation, .host .wort, .host .begriff{
+    font-size:clamp(17px, 2.9vh, 32px) !important;
+    line-height:1.32 !important;
+    word-break:break-word;
+  }
+  .host .solution-text, .host .aufl, .host .info{
+    font-size:clamp(14px, 2.2vh, 22px) !important;
+  }
+
+  .host .phase-pill, .host .pill, .host .badge, .host .round-counter,
+  .host .category-pill, .host .game-pill, .host .round-badge,
+  .host .pill span, .host .badge span, .host .round-badge .num,
+  .host .round-badge .lbl{
+    font-size:clamp(12px, 1.7vh, 17px) !important;
+    padding:.7vh 2.4vw !important;
+  }
+  .host .pill span, .host .badge span, .host .round-badge .num,
+  .host .round-badge .lbl{padding:0 !important;}
+  .host .phase-pill .dot{width:8px !important;height:8px !important;}
+
+  .host .spieler-reihe, .host .spielerliste, .host .players,
+  .host .scoreboard, .host .scores, .host .jks{
+    flex-wrap:wrap !important;
+    justify-content:center !important;
+    gap:1.6vh 3vw !important;
+  }
+  .host .spieler, .host .score-card, .host .player{
+    min-width:26vw;
+  }
+  .host .spieler .avatar, .host .avatar{
+    width:clamp(44px, 7.6vh, 92px) !important;
+    height:clamp(44px, 7.6vh, 92px) !important;
+  }
+  .host .spieler .ring, .host .ring{
+    width:clamp(52px, 8.8vh, 104px) !important;
+    height:clamp(52px, 8.8vh, 104px) !important;
+    border-width:3px !important;
+  }
+  .host .spieler .name, .host .score-card .name{
+    font-size:clamp(10px, 1.6vh, 17px) !important;
+  }
+  .host .score-card{min-width:0 !important;}
+
+  .host .optionen, .host .antworten, .host .karten, .host .answers-grid,
+  .host .options, .host .final-grid{
+    grid-template-columns:1fr !important;
+    flex-direction:column !important;
+    gap:1.2vh !important;
+  }
+  .host .option, .host .karte, .host .antwort, .host .answer{
+    font-size:clamp(13px, 2vh, 21px) !important;
+    padding:1.4vh 3.4vw !important;
+    min-height:0 !important;
+  }
+
+  .host .board, .host .teams{
+    flex-direction:column !important;
+    gap:1.4vh !important;
+  }
+  .host .team-panel, .host .team{
+    width:100% !important;
+    max-width:100% !important;
+  }
+
+  .host .cell, .host .cat-head{
+    font-size:clamp(11px, 1.9vh, 20px) !important;
+    padding:1vh .6vw !important;
+  }
+
+  .host .host-buzz, .host .buzz-orb{
+    width:clamp(64px, 9.5vh, 104px) !important;
+    height:clamp(64px, 9.5vh, 104px) !important;
+    font-size:clamp(11px, 1.5vh, 14px) !important;
+  }
+  .host .buzz-side{
+    position:static !important;
+    flex-direction:row !important;
+    width:auto !important;
+    margin:1.4vh auto 0 !important;
+    justify-content:center !important;
+  }
+  .host .buzz-order{width:clamp(130px, 42vw, 220px) !important;}
+  /* Buzz-Order und Strikes rechnen mit Multiplikatoren unter 1
+     und landen sonst bei 8px. Mindestgroessen erzwingen. */
+  .host .buzz-order .head{font-size:clamp(12px, 1.7vh, 17px) !important;}
+  .host .buzz-order .list .row,
+  .host .buzz-order .list .leer{font-size:clamp(12px, 1.6vh, 16px) !important;}
+  .host .strikes, .host .team-strikes, .host .strikes-row,
+  .host .strikes-row span, .host .strikes-row .heart,
+  .host .heart, .host .hearts{font-size:clamp(12px, 1.7vh, 18px) !important;}
+  .host .hidden-tag, .host .tag, .host .mini-label{
+    font-size:clamp(10px, 1.4vh, 14px) !important;
+  }
+  /* Kleine Labels mit Multiplikatoren unter 1 */
+  .host .small, .host .lbl, .host .turn-flag, .host .hint-label,
+  .host .info-pill .lbl, .host .cap, .host .sub,
+  .host .cold, .host .hot, .host .scale-ends span{
+    font-size:clamp(11px, 1.5vh, 16px) !important;
+  }
+  .host .val, .host .info-pill .val{
+    font-size:clamp(13px, 1.9vh, 21px) !important;
+  }
+
+  .host .orbs span{opacity:.3 !important;filter:blur(56px) !important;}
+  .host .mask-float, .host .nebel{display:none !important;}
+  .host .mond{opacity:.26 !important;}
+
+  .host .round-badge, .host .top-right, .host .round-counter,
+  .host .only-one{
+    position:static !important;
+    margin:0 auto .8vh !important;
+    transform:none !important;
+  }
+  .host .top-right{
+    display:flex !important;
+    justify-content:center !important;
+    flex-wrap:wrap !important;
+    gap:1.6vw !important;
+  }
+  .host .header{
+    position:static !important;
+    align-items:center !important;
+    margin-bottom:1vh !important;
+  }
+}
+
+/* ============================================================
+   HOST-SEITEN IM QUERFORMAT
+   Im Landscape ist die Hoehe die kurze Kante (z.B. 390px).
+   --u muss deshalb an die Hoehe, nicht an die Breite.
+   ============================================================ */
+@media (max-height:560px) and (orientation:landscape){
+  :root, html.host, body.host{
+    --u: 1.5vh;
+  }
+  html.host, body.host{
+    width:100% !important;
+    max-width:100% !important;
+    height:auto !important;
+    min-height:100vh;
+    overflow-x:hidden !important;
+    overflow-y:auto !important;
+  }
+  .host .stage{
+    width:100% !important;
+    max-width:100% !important;
+    height:auto !important;
+    min-height:100vh;
+    padding:1.4vh 2.4vw 1.8vh !important;
+    overflow-x:hidden !important;
+  }
+  .host .orbs span{opacity:.34 !important;}
+  .host .title, .host .logo, .host h1, .host .brand{
+    font-size:clamp(20px, 7.5vh, 44px) !important;
+    line-height:1.05 !important;
+  }
+  .host .frage, .host .question, .host .story-text, .host .hint-word,
+  .host .situation, .host .wort, .host .begriff{
+    font-size:clamp(15px, 5.2vh, 28px) !important;
+    line-height:1.28 !important;
+  }
+  .host .phase-pill, .host .pill, .host .badge, .host .round-counter,
+  .host .category-pill, .host .game-pill, .host .round-badge,
+  .host .pill span, .host .badge span{
+    font-size:clamp(11px, 3.4vh, 16px) !important;
+  }
+  .host .buzz-order .head,
+  .host .buzz-order .list .row,
+  .host .buzz-order .list .leer,
+  .host .strikes-row span, .host .heart{
+    font-size:clamp(11px, 3.2vh, 15px) !important;
+  }
+  /* Kleine Labels rechnen mit Multiplikatoren unter 1 und landen
+     im Querformat sonst bei 3-8px. */
+  .host .small, .host .lbl, .host .val, .host .turn-flag,
+  .host .hint-label, .host .info-pill .lbl, .host .info-pill .val,
+  .host .team-name .turn-flag, .host .cap, .host .sub,
+  .host .cold, .host .hot, .host .scale-ends span,
+  .host .scale-nums span{
+    font-size:clamp(11px, 3vh, 16px) !important;
+  }
+  .host .val, .host .info-pill .val{font-size:clamp(13px, 3.8vh, 20px) !important;}
+  .host .avatar{width:clamp(38px, 13vh, 76px) !important;height:clamp(38px, 13vh, 76px) !important;}
+  .host .ring{width:clamp(44px, 15vh, 86px) !important;height:clamp(44px, 15vh, 86px) !important;}
+}
+
+/* Modi mit fest verdrahteter 1920px-Buehne (Imposter, Millionaer,
+   Blackstories): das Layout laesst sich nicht umbrechen, ohne die
+   Optik zu zerstoeren. Stattdessen die ganze Buehne herunter-
+   skalieren, damit sie vollstaendig auf den Schirm passt. */
+@media (max-width:900px){
+  html.host.fixed-stage, body.host.fixed-stage{
+    width:100% !important;
+    height:auto !important;
+    min-height:100vh;
+    overflow-x:hidden !important;
+  }
+  body.host.fixed-stage > *{
+    transform-origin:top left;
+  }
+}
+
+/* ============================================================
+   SPIELLEITER- UND BUZZER-SEITEN
+   ============================================================ */
+@media (max-width:820px){
+  .grid, .cols{
+    grid-template-columns:1fr !important;
+    max-width:100% !important;
+  }
+  /* Grid- und Flex-Kinder haben min-width:auto und sprengen sonst
+     den Container, sobald ihr Inhalt breiter ist als der Platz. */
+  .grid > *, .cols > *{
+    min-width:0 !important;
+    max-width:100% !important;
+  }
+  .wrap, .card, .box, .panel, section{
+    max-width:100% !important;
+    width:100% !important;
+  }
+}
+
+@media (max-width:640px){
+  body:not(.host){padding:14px !important;}
+  .wrap{max-width:100% !important;width:100% !important;}
+
+  input, select, textarea{
+    font-size:16px !important;
+    padding:13px !important;
+    border-radius:12px !important;
+    width:100%;
+    max-width:100%;
+  }
+
+  button, .option, .btn, .taste,
+  .btn-primary, .btn-ghost, .btn-bad, .btn-warn{
+    min-height:46px;
+    font-size:15px !important;
+    padding:12px 14px !important;
+  }
+  .mini{min-height:40px;font-size:13px !important;padding:9px 11px !important;}
+
+  h1{font-size:clamp(19px, 6vw, 26px) !important;}
+  h2{font-size:clamp(16px, 5vw, 21px) !important;}
+
+  .row, .reihe, .actions, .btn-row, .controls{
+    flex-wrap:wrap !important;
+    gap:8px !important;
+  }
+  .row > *, .reihe > *{min-width:0;}
+  .full{width:100% !important;}
+
+  .player-row{
+    flex-wrap:wrap !important;
+    gap:6px !important;
+    align-items:center !important;
+  }
+  .player-row .name, .name{
+    font-size:14px !important;
+    word-break:break-word;
+  }
+  .score, .val, .sek{font-size:14px !important;}
+  .status-line, .status, .small, .hinweis, .lbl{
+    font-size:13px !important;
+    line-height:1.4 !important;
+  }
+
+  .buzz-btn{
+    width:min(70vw, 58vh) !important;
+    height:min(70vw, 58vh) !important;
+    max-width:300px !important;
+    max-height:300px !important;
+    font-size:clamp(24px, 8vw, 44px) !important;
+    margin:0 auto !important;
+    display:flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+  }
+  body:not(.host) .frage{font-size:clamp(16px, 4.6vw, 24px) !important;line-height:1.35 !important;}
+  .gross{font-size:clamp(20px, 6vw, 34px) !important;}
+  body:not(.host) .aufl{font-size:clamp(15px, 4.2vw, 22px) !important;}
+
+  .jokers{
+    display:flex !important;
+    flex-wrap:wrap !important;
+    justify-content:center !important;
+    gap:8px !important;
+  }
+  .joker{
+    min-height:44px;
+    font-size:13px !important;
+    padding:10px 12px !important;
+  }
+
+  .cat-rail{
+    flex-wrap:wrap !important;
+    gap:6px !important;
+  }
+  .cold, .hot{font-size:12px !important;}
+}
+
+@media (max-width:380px){
+  body:not(.host){padding:10px !important;}
+  button, .option, .btn, .taste{padding:11px !important;font-size:14px !important;}
+  h1{letter-spacing:1px !important;}
+  .buzz-btn{width:min(76vw, 54vh) !important;height:min(76vw, 54vh) !important;}
+  .mini{padding:8px 9px !important;font-size:12px !important;}
+}
+
+/* Touch-Ziele: im Querformat ist die Breite gross (z.B. 844px),
+   deshalb greift der 640px-Block oben nicht. Hier ueber die
+   niedrige Hoehe erfassen, damit Knoepfe fingerfreundlich bleiben. */
+@media (max-height:560px) and (orientation:landscape){
+  button, .btn, .option, .taste,
+  .btn-primary, .btn-ghost, .btn-bad, .btn-warn,
+  input[type=submit], input[type=button], a.btn{
+    min-height:40px !important;
+    font-size:14px !important;
+    padding:9px 13px !important;
+  }
+  .mini{min-height:36px !important;font-size:12px !important;padding:7px 10px !important;}
+  input, select, textarea{font-size:16px !important;padding:10px !important;}
+}
+
+/* ============================================================
+   UEBERSICHTSSEITEN / KACHELN
+   ============================================================ */
+@media (max-width:820px){
+  .kacheln, .spiele, .karten-grid, .game-grid, .tiles{
+    grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)) !important;
+    gap:12px !important;
+  }
+}
+@media (max-width:430px){
+  .kacheln, .spiele, .karten-grid, .game-grid, .tiles{
+    grid-template-columns:1fr 1fr !important;
+    gap:10px !important;
+  }
+}
+
+/* ============================================================
+   TABELLEN
+   ============================================================ */
+@media (max-width:640px){
+  table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  th, td{white-space:nowrap;font-size:14px !important;padding:10px !important;}
+}
+
+/* ============================================================
+   ZEICHENFLAECHEN
+   ============================================================ */
+@media (max-width:820px){
+  canvas{touch-action:none;max-width:100%;height:auto;}
+  .werkzeuge, .tools, .palette{
+    flex-wrap:wrap !important;
+    justify-content:center !important;
+    gap:8px !important;
+  }
+  .farbe, .farbfeld{min-width:34px;min-height:34px;}
+}
+
+/* ============================================================
+   NOTCH-SICHERHEITSABSTAND
+   ============================================================ */
+@supports (padding:max(0px)){
+  @media (max-width:640px){
+    body:not(.host){
+      padding-left:max(14px, env(safe-area-inset-left)) !important;
+      padding-right:max(14px, env(safe-area-inset-right)) !important;
+      padding-bottom:max(14px, env(safe-area-inset-bottom)) !important;
+    }
+    body.host .stage{
+      padding-left:max(3vw, env(safe-area-inset-left)) !important;
+      padding-right:max(3vw, env(safe-area-inset-right)) !important;
+      padding-bottom:max(3vh, env(safe-area-inset-bottom)) !important;
+    }
+  }
+}

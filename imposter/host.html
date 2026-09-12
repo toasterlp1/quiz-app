@@ -1,0 +1,308 @@
+<!doctype html>
+<html class="host" lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>Imposter — Host</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Manrope:wght@600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../live.js"></script>
+<script src="../public-client.js"></script>
+
+<script src="../crew.js"></script>
+<script src="../kern-render.js"></script>
+
+<style>
+  /* Handy-Skalierung: Bezugsgroesse wechselt hochkant auf die Hoehe */
+  :root{ --u: 1vw; }
+  @media (max-width:900px) and (orientation:portrait){
+    :root{ --u: 0.62vh; }
+    html.host, body.host{ height:auto; min-height:100%; overflow-y:auto; overflow-x:hidden; }
+  }
+  @media (max-width:900px) and (orientation:portrait) and (min-aspect-ratio:3/5){
+    :root{ --u: 0.72vh; }
+  }
+  @media (max-height:520px) and (orientation:landscape){
+    :root{ --u: 1.35vh; }
+  }
+
+  .avatar-pic{
+  width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0;
+}
+  :root{
+    --bg:#0b0e14; --panel:#151a24; --panel-2:#1b2230; --border:#2a3244;
+    --ink:#f3f1e8; --muted:#7c8494;
+    --accent:#ff5b3a; --accent-glow:rgba(255,91,58,.35);
+    --gold:#d9a441; --crimson:#e2495a; --mint:#35d0a4;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:transparent;width:1920px;height:1080px;overflow:hidden;font-family:'Manrope',sans-serif;}
+
+  .stage{
+    position:relative;width:1920px;height:1080px;overflow:hidden;
+    background:
+      radial-gradient(ellipse 1200px 700px at 50% 8%, rgba(255,91,58,.10), transparent 62%),
+      radial-gradient(ellipse 900px 600px at 50% 100%, rgba(217,164,65,.06), transparent 60%),
+      var(--bg);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+  }
+  .stage::before{
+    content:"";position:absolute;inset:0;pointer-events:none;
+    background-image:
+      linear-gradient(rgba(255,255,255,.022) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.022) 1px, transparent 1px);
+    background-size:64px 64px;
+    -webkit-mask-image:radial-gradient(ellipse 1400px 900px at 50% 45%, black, transparent 75%);
+    mask-image:radial-gradient(ellipse 1400px 900px at 50% 45%, black, transparent 75%);
+  }
+
+  .title{
+    position:absolute;top:54px;left:0;right:0;text-align:center;
+    font-family:'Bebas Neue',sans-serif;font-size:64px;letter-spacing:10px;
+    background:linear-gradient(180deg,#fffdf6 0%, var(--ink) 55%, var(--accent) 150%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+
+  .phase-wrap{height:56px;margin-bottom:46px;position:relative;overflow:hidden;width:1100px;max-width:calc(90 * var(--u));}
+  .phase-label{
+    position:absolute;left:0;right:0;top:0;text-align:center;
+    font-family:'Space Mono',monospace;font-weight:700;font-size:22px;letter-spacing:1.5px;
+    color:var(--gold);
+    transition:opacity .4s ease, transform .4s cubic-bezier(.2,.8,.2,1);
+  }
+  .phase-label::before{
+    content:"";display:inline-block;width:8px;height:8px;border-radius:50%;
+    background:var(--gold);margin-right:12px;vertical-align:middle;
+    box-shadow:0 0 10px var(--gold);
+    animation:blink 1.6s ease-in-out infinite;
+  }
+  @keyframes blink{ 0%,100%{opacity:1;} 50%{opacity:.25;} }
+
+  .result-banner{
+    max-width:1200px;text-align:center;font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:.5px;
+    color:var(--ink);background:var(--panel);border:1px solid var(--accent);
+    box-shadow:0 0 0 1px var(--accent-glow) inset, 0 24px 50px -26px rgba(0,0,0,.7);
+    border-radius:16px;padding:26px 40px;margin-bottom:46px;
+    opacity:0;transform:translateY(10px) scale(.97);
+    animation:resultIn .5s cubic-bezier(.2,.8,.2,1) forwards;
+  }
+  @keyframes resultIn{ to{opacity:1;transform:translateY(0) scale(1);} }
+
+  .scoreboard{display:flex;gap:22px;flex-wrap:wrap;justify-content:center;max-width:1650px;}
+  .player-card{
+    position:relative;min-width:190px;padding:22px 28px;border-radius:16px;
+    background:linear-gradient(160deg, var(--panel-2), var(--panel));
+    border:1px solid var(--border);text-align:center;
+    box-shadow:0 14px 30px -18px rgba(0,0,0,.7);
+    opacity:0;transform:translateY(18px) scale(.94);
+    animation:cardIn .5s cubic-bezier(.2,.8,.2,1) forwards;
+    animation-delay:calc(var(--i,0) * 60ms);
+    transition:border-color .25s ease, transform .25s cubic-bezier(.2,.8,.2,1);
+  }
+  .player-card:hover{border-color:var(--gold);}
+  @keyframes cardIn{ to{opacity:1;transform:translateY(0) scale(1);} }
+  .player-card .name{
+    font-size:16px;font-weight:800;color:var(--ink);letter-spacing:.4px;
+  }
+  .player-card .score{
+    font-family:'Space Mono',monospace;font-weight:700;font-size:38px;color:var(--mint);margin-top:6px;
+    transition:color .2s ease;
+  }
+  .player-card .tag{
+    font-size:9.5px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-top:2px;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{animation-duration:.01ms !important;}
+  }
+
+  .tension{
+    position:absolute;inset:0;pointer-events:none;z-index:0;
+    opacity:0;transition:opacity 1.4s ease, background 1.4s ease;
+  }
+  .tension.assigned{
+    opacity:1;background:radial-gradient(ellipse 1500px 950px at 50% 50%, transparent 50%, rgba(53,208,164,.09) 100%);
+  }
+  .tension.voting{
+    opacity:1;background:radial-gradient(ellipse 1500px 950px at 50% 50%, transparent 42%, rgba(217,164,65,.24) 100%);
+    animation:tensionPulse 1.8s ease-in-out infinite;
+  }
+  .tension.guess{
+    opacity:1;background:radial-gradient(ellipse 1500px 950px at 50% 50%, transparent 38%, rgba(226,73,90,.30) 100%);
+    animation:tensionPulse 1s ease-in-out infinite;
+  }
+  .tension.resolved-crew{
+    opacity:1;background:radial-gradient(ellipse 1500px 950px at 50% 50%, transparent 46%, rgba(53,208,164,.20) 100%);
+  }
+  .tension.resolved-imposter{
+    opacity:1;background:radial-gradient(ellipse 1500px 950px at 50% 50%, transparent 46%, rgba(226,73,90,.24) 100%);
+  }
+  @keyframes tensionPulse{ 0%,100%{opacity:.65;} 50%{opacity:1;} }
+
+  .player-card.ejected{ animation:cardShake .5s ease-in-out; }
+  @keyframes cardShake{
+    0%,100%{ transform:translateX(0) scale(1); }
+    20%{ transform:translateX(-6px) scale(1.02); }
+    40%{ transform:translateX(6px) scale(1.02); }
+    60%{ transform:translateX(-4px) scale(1.02); }
+    80%{ transform:translateX(4px) scale(1.02); }
+  }
+</style>
+<link rel="stylesheet" href="../responsive.css" />
+<link rel="stylesheet" href="../hintergrund-host.css" />
+<style>:root{ --akzent-rgb: 255,91,58; --akzent2-rgb: 120,60,200; }</style>
+<link rel="stylesheet" href="../show-camera.css">
+</head>
+<body class="host">
+<div class="stage">
+  <div class="tension" id="tension"></div>
+  <div class="title">IMPOSTER</div>
+  <div class="phase-wrap"><div class="phase-label" id="phaseLabel"></div></div>
+  <div class="result-banner" id="resultBanner" style="display:none;"></div>
+  <div class="scoreboard" id="scoreboard"></div>
+</div>
+
+<script>
+const sb = window.KA_SB;
+let state = null;
+let fxLetzterEjected = null;
+let fxLetzteAufloesung = null;
+
+function tensionKlasse(phase, crewWin){
+  if(phase==='assigned') return 'assigned';
+  if(phase==='voting') return 'voting';
+  if(phase==='guess') return 'guess';
+  if(phase==='resolved') return crewWin ? 'resolved-crew' : 'resolved-imposter';
+  return '';
+}
+
+const impScoreboardListe = KernRender.liste(document.getElementById('scoreboard'), {
+  schluessel: p => p.name,
+  erstellen: p => {
+    const avatarUrl = avatarFor(p.name);
+    const el = document.createElement('div');
+    el.className = 'player-card';
+    el.innerHTML = `
+      ${avatarUrl ? `<img class="avatar-pic" src="${avatarUrl}" style="margin-bottom:8px;">` : ''}
+      <div class="name"></div>
+      <div class="score"></div>
+      <div class="tag">Punkte</div>`;
+    return el;
+  },
+  aktualisieren: (el, p, i) => {
+    el.style.setProperty('--i', i);
+    el.className = `player-card ${p.__ejected ? 'ejected' : ''}`;
+    KernRender.textWennGeaendert(el.querySelector('.name'), p.name);
+    KernRender.textWennGeaendert(el.querySelector('.score'), p.score);
+  }
+});
+
+function render(){
+  if(window.HOSTPODEST && state) HOSTPODEST.pruefe(state);
+  if(!state) return;
+  const { players={}, phase='idle', hintRound=1, lastResult=null, ejected=null, imposterName=null } = state;
+
+  const crewWin = /Crew-Mitglieder/.test(lastResult||'');
+
+  document.getElementById('tension').className = 'tension ' + tensionKlasse(phase, crewWin);
+
+  if(window.HOSTFX && ejected && ejected !== fxLetzterEjected){
+    const istImposter = ejected === imposterName;
+    HOSTFX.joker(
+      ejected,
+      istImposter ? 'IMPOSTER ENTTARNT!' : 'FALSCHE PERSON!',
+      istImposter ? '#35d0a4' : '#e2495a',
+      avatarFor(ejected)
+    );
+  }
+  fxLetzterEjected = ejected || null;
+
+  const aufloeseSchluessel = (phase==='resolved' && lastResult) ? `${state.wordIndex}-${lastResult}` : null;
+  if(window.HOSTFX && aufloeseSchluessel && aufloeseSchluessel !== fxLetzteAufloesung && ejected === imposterName){
+    if(crewWin) HOSTFX.correct(); else HOSTFX.wrong();
+  }
+  fxLetzteAufloesung = aufloeseSchluessel;
+
+  const phaseLabel = document.getElementById('phaseLabel');
+  const resultBanner = document.getElementById('resultBanner');
+
+  const labels = {
+    idle: 'Warte auf nächste Runde…',
+    assigned: `Diskussion läuft — Hinweisrunde ${hintRound}/2`,
+    voting: 'Abstimmung läuft…',
+    guess: 'Der Imposter wurde enttarnt…',
+    resolved: ''
+  };
+  phaseLabel.textContent = labels[phase] ?? '';
+  phaseLabel.style.display = phase==='resolved' ? 'none' : 'block';
+
+  if(phase==='resolved' && lastResult){
+    resultBanner.style.display='block';
+    resultBanner.textContent = lastResult;
+  } else {
+    resultBanner.style.display='none';
+  }
+
+  const datensaetze = Object.entries(players).map(([name,score]) => ({
+    name, score, __ejected: (name === ejected && (phase==='guess' || phase==='resolved'))
+  }));
+  impScoreboardListe.render(datensaetze);
+}
+
+async function loadState(){
+  const { data } = await sb.from('imp_state').select('state').eq('id',1).single();
+  state = data?.state || {};
+  render();
+}
+loadState();
+// Realtime mit Selbstheilung: bricht die Verbindung ab (Handy sperrt,
+// WLAN wechselt), wird neu verbunden und der verpasste Stand geholt.
+// Solange Realtime steht, laeuft nur ein sehr langsames Sicherheitsnetz
+// statt des frueheren Dauer-Pollings im Sekundentakt.
+if(window.KA_LIVE){
+  KA_LIVE.start({
+    client: sb,
+    tabelle: 'imp_state',
+    laden: async function(){ await loadState(); }
+  });
+} else {
+  setInterval(loadState, 2000);
+}
+</script>
+<script src="../zurueck.js"></script>
+<script src="../camera-config.js"></script>
+<script src="../stream-mode.js?v=48"></script>
+<script src="../show-camera.js?v=48"></script>
+<script src="../host-fx.js"></script>
+
+<script>
+// Zeigt das Podest automatisch, sobald alle Runden gespielt sind.
+if(window.HOSTPODEST) HOSTPODEST.init({
+  punkte: function(s){
+    var p = s.players || {};
+    return Object.keys(p).map(function(n){
+      var v = p[n];
+      return { spieler: n, punkte: (typeof v === 'number') ? v : (v && v.score) || 0 };
+    });
+  }
+});
+</script>
+
+<script>
+// Turnier: Rolle merken und auf Formatwechsel horchen.
+// Schaltet der Spielleiter weiter, springt dieses Geraet mit.
+if(window.TURNIER){
+  TURNIER.setzeRolle('host');
+  TURNIER.starte(typeof sb !== "undefined" ? sb : null);
+}
+</script>
+<script>
+(function(){
+})();
+</script>
+<script src="../active-stream-mode.js?v=48"></script>
+</body>
+</html>

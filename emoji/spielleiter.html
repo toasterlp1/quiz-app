@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>Emoji-Rätsel — Spielleiter</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@500;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../eingabeschutz.js"></script>
+<script src="../public-client.js"></script>
+<script src="../server-time.js?v=48"></script>
+
+<script src="../kern-render.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@twemoji/api@15.1.0/dist/twemoji.min.js" crossorigin="anonymous"></script>
+<script src="./raetsel.js"></script>
+<style>
+  :root{
+    --bg:#0a0e1a; --bg2:#100a20; --panel:#161029; --panel2:#1c1436; --border:#2c2350;
+    --ink:#eef1f8; --muted:#8579a8;
+    --accent:#c76bff; --accent2:#ff6bd6; --gold:#ffd166; --bad:#ff3860;
+    --ease:cubic-bezier(.22,.9,.32,1);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(ellipse 60vw 40vh at 10% -10%, rgba(199,107,255,.12), transparent 60%),
+      radial-gradient(ellipse 60vw 40vh at 95% 105%, rgba(255,107,214,.1), transparent 60%),
+      var(--bg);
+    color:var(--ink);font-family:'Inter',sans-serif;padding:24px;min-height:100vh;
+  }
+  h1{
+    font-family:'Anton',sans-serif;letter-spacing:4px;margin:0 0 4px;font-size:28px;
+    background:linear-gradient(180deg,#f3e8ff 0%, var(--accent) 45%, var(--accent2) 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .h-rule{width:80px;height:3px;border-radius:2px;margin-bottom:22px;
+    background:linear-gradient(90deg, var(--accent), var(--accent2), var(--gold));}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;max-width:1100px;margin:0 auto;}
+  .card{
+    background:linear-gradient(165deg,var(--panel2),var(--panel));
+    border:1px solid var(--border);border-radius:16px;padding:20px;
+  }
+  .card h2{font-size:13.5px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin:0 0 14px;font-weight:800;}
+  button{
+    font-family:'Inter',sans-serif;font-weight:800;border:none;border-radius:10px;
+    padding:12px 18px;cursor:pointer;font-size:14px;transition:transform .1s, opacity .15s, filter .15s;
+    letter-spacing:.2px;
+  }
+  button:active{transform:scale(.96);}
+  button:disabled{opacity:.35;cursor:not-allowed;}
+  .btn-primary{background:linear-gradient(135deg, var(--accent), #9b3fe0);color:#fff;box-shadow:0 4px 16px -4px rgba(199,107,255,.5);}
+  .btn-primary:not(:disabled):hover{filter:brightness(1.08);}
+  .btn-warn{background:linear-gradient(135deg,#ffdf94,var(--gold));color:#241900;box-shadow:0 4px 16px -4px rgba(255,209,102,.5);}
+  .btn-bad{background:linear-gradient(135deg,#ff5470,var(--bad));color:#fff;box-shadow:0 4px 16px -4px rgba(255,56,96,.5);}
+  .btn-ghost{background:#0d1220;color:var(--ink);border:1px solid var(--border);}
+  .btn-ghost:not(:disabled):hover{border-color:var(--accent);}
+  .row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;}
+  input[type=text]{
+    background:#0d1220;border:1px solid var(--border);color:var(--ink);
+    padding:10px 12px;border-radius:8px;font-family:'Inter',sans-serif;font-size:14px;flex:1;
+  }
+  input[type=text]:focus{outline:none;border-color:var(--accent);}
+  .status-line{font-size:14px;color:var(--muted);margin-bottom:6px;line-height:1.6;}
+  .status-line b{color:var(--ink);}
+  .emoji-preview{font-size:32px;margin:10px 0 14px;letter-spacing:10px;text-align:center;
+    background:#0d1220;border:1px solid var(--border);border-radius:14px;padding:14px;}
+  .emoji-preview img.emoji{width:28px;height:28px;vertical-align:middle;}
+  .queue{display:flex;flex-direction:column;gap:6px;margin-top:10px;}
+  .queue-item{
+    display:flex;justify-content:space-between;align-items:center;
+    background:#0d1220;border:1px solid var(--border);border-radius:8px;padding:8px 12px;
+    font-size:13.5px;font-weight:700;
+  }
+  .queue-item.active{border-color:var(--gold);box-shadow:0 0 14px -4px var(--gold);color:var(--gold);}
+  .queue-item.out{opacity:.4;text-decoration:line-through;}
+  .players{display:flex;flex-direction:column;gap:8px;}
+  .player-row{
+    display:flex;align-items:center;gap:10px;background:#0d1220;
+    border:1px solid var(--border);border-radius:8px;padding:8px 10px;
+  }
+  .player-row .name{flex:1;font-weight:700;}
+  .player-row .score{font-family:'Anton',sans-serif;font-size:20px;color:var(--accent);min-width:36px;text-align:center;}
+  .mini{padding:6px 10px;font-size:12px;}
+  .answer-reveal{
+    font-family:'Anton',sans-serif;font-size:19px;color:var(--gold);margin-top:2px;
+    letter-spacing:.5px;
+  }
+
+@media (max-width:820px){
+  body{padding:14px;}
+  .grid{grid-template-columns:1fr;gap:14px;}
+  .row{flex-wrap:wrap;}
+  .team-score-row,.score-row,.jn-row,.stat-mini{flex-wrap:wrap;}
+  button,select,input{min-height:40px;}
+}
+</style>
+<link rel="stylesheet" href="../responsive.css" />
+
+</head>
+<body>
+<h1>EMOJI-RÄTSEL — SPIELLEITER</h1>
+<div class="h-rule"></div>
+<div class="grid">
+
+  <div class="card">
+    <h2>Runde</h2>
+    <div class="status-line" id="statusLine">Kein Rätsel aktiv.</div>
+    <div class="emoji-preview" id="emojiPreview"></div>
+    <div class="answer-reveal" id="answerReveal"></div>
+    <div class="row">
+      <button class="btn-primary" id="btnNewRound">Neues Rätsel starten</button>
+      <button class="btn-warn" id="btnReveal" disabled>Nächstes Emoji aufdecken</button>
+      <button class="btn-ghost" id="btnResetPool">Pool zurücksetzen</button>
+    </div>
+    <h2 style="margin-top:20px;">Buzzer-Warteschlange</h2>
+    <div class="queue" id="queue">
+      <span id="queueLeer" style="color:var(--muted);">— niemand gebuzzert —</span>
+    </div>
+    <div class="row" style="margin-top:14px;">
+      <button class="btn-primary" id="btnCorrect" disabled>Richtig</button>
+      <button class="btn-bad" id="btnWrong" disabled>Falsch</button>
+      <button class="btn-ghost" id="btnRevealAnswer">Antwort aufdecken</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Spieler</h2>
+    <div class="row">
+      <input type="text" id="newPlayerName" placeholder="Name eingeben…" />
+      <button class="btn-primary" id="btnAddPlayer">Hinzufügen</button>
+    </div>
+    <div class="players" id="players"></div>
+  </div>
+
+</div>
+
+<script>
+const sb = window.KA_SB;
+let emojiActionBusy = false;
+let state = { players:{}, riddleIndex:null, revealedCount:0, solved:false, buzzQueue:[], buzzedOut:[], usedIndices:[], poolExhausted:false,
+              revealAt:null, timerRunning:false };
+
+const REVEAL_SEKUNDEN = 12;
+
+// Buzz-Warteschlange ruhig verwalten - Eintraege bleiben im DOM
+// bestehen, nur Klassen/Text aendern sich (kein Neuaufbau bei
+// jedem Realtime-Tick).
+const queueListe = KernRender.liste(document.getElementById('queue'), {
+  schluessel: n => n,
+  erstellen: () => {
+    const el = document.createElement('div');
+    el.className = 'queue-item';
+    return el;
+  },
+  aktualisieren: (el, name) => {
+    const out = state.buzzedOut.includes(name);
+    const isActive = state.buzzQueue.find(n => !state.buzzedOut.includes(n)) === name;
+    el.className = `queue-item ${isActive ? 'active' : ''} ${out ? 'out' : ''}`;
+    KernRender.textWennGeaendert(el, name + (isActive ? ' ← dran' : ''));
+  }
+});
+
+async function loadState(){
+  const { data } = await sb.from('er_state').select('state').eq('id',1).single();
+  state = Object.assign({ players:{}, riddleIndex:null, revealedCount:0, solved:false, buzzQueue:[], buzzedOut:[], usedIndices:[], poolExhausted:false,
+                          revealAt:null, timerRunning:false }, data?.state||{});
+  render();
+}
+async function saveState(){
+  await sb.from('er_state').update({ state }).eq('id',1);
+}
+loadState();
+
+sb.channel('er_state_channel_sl')
+  .on('postgres_changes', { event:'*', schema:'public', table:'er_state' }, payload=>{
+    state = payload.new.state || state;
+    render();
+  }).subscribe();
+
+function currentPoints(){ return 5 - state.revealedCount; }
+function activeBuzzer(){ return state.buzzQueue.find(n=>!state.buzzedOut.includes(n)); }
+
+function render(){
+  const statusLine = document.getElementById('statusLine');
+  const emojiPreview = document.getElementById('emojiPreview');
+  const answerReveal = document.getElementById('answerReveal');
+  if(state.riddleIndex!=null && RAETSEL[state.riddleIndex]){
+    const riddle = RAETSEL[state.riddleIndex];
+    statusLine.innerHTML = `Rätsel <b>#${state.riddleIndex+1}</b> — aufgedeckt: <b>${state.revealedCount}/4</b> — aktuell wert: <b>${currentPoints()} Punkte</b>${state.solved?' — GELÖST':''}`;
+    emojiPreview.textContent = riddle.emojis.map((e,i)=> i<state.revealedCount ? e : '❔').join('  ');
+    if(window.twemoji) twemoji.parse(emojiPreview, {
+      callback: (icon) => 'https://cdn.jsdelivr.net/npm/@twemoji/svg@15.0.0/' + icon + '.svg'
+    });
+    answerReveal.textContent = 'Antwort: ' + riddle.antwort;
+  } else {
+    statusLine.textContent = state.poolExhausted
+      ? 'Alle Rätsel wurden bereits gezeigt. Klick "Pool zurücksetzen" für eine neue Runde.'
+      : 'Kein Rätsel aktiv.';
+    emojiPreview.textContent = '';
+    answerReveal.textContent = '';
+  }
+
+  document.getElementById('btnReveal').disabled = state.riddleIndex==null || state.solved || state.revealedCount>=4;
+
+  const queueLeer = document.getElementById('queueLeer');
+  queueLeer.style.display = state.buzzQueue.length===0 ? '' : 'none';
+  queueListe.render(state.buzzQueue);
+
+  const active = activeBuzzer();
+  document.getElementById('btnCorrect').disabled = !active || state.solved || state.riddleIndex==null;
+  document.getElementById('btnWrong').disabled = !active || state.solved || state.riddleIndex==null;
+
+  const playersEl = document.getElementById('players');
+  playersEl.innerHTML = Object.entries(state.players).map(([name,score])=>`
+    <div class="player-row">
+      <span class="name">${name}</span>
+      <button class="btn-ghost mini" data-adj="-1" data-name="${name}">−1</button>
+      <span class="score">${score}</span>
+      <button class="btn-ghost mini" data-adj="1" data-name="${name}">+1</button>
+      <button class="btn-bad mini" data-remove="${name}">Entfernen</button>
+    </div>
+  `).join('');
+  playersEl.querySelectorAll('[data-adj]').forEach(b=>{
+    b.onclick = async ()=>{
+      const n = b.dataset.name;
+      state.players[n] = (state.players[n]||0) + parseInt(b.dataset.adj,10);
+      await saveState();
+    };
+  });
+  playersEl.querySelectorAll('[data-remove]').forEach(b=>{
+    b.onclick = async ()=>{
+      const n = b.dataset.remove;
+      delete state.players[n];
+      state.buzzQueue = state.buzzQueue.filter(x=>x!==n);
+      state.buzzedOut = state.buzzedOut.filter(x=>x!==n);
+      await saveState();
+      try { await sb.rpc('deactivate_public_player', { p_name:n, p_format:'emoji' }); } catch(e) {}
+    };
+  });
+}
+
+document.getElementById('btnAddPlayer').onclick = async ()=>{
+  const input = document.getElementById('newPlayerName');
+  const name = input.value.trim();
+  if(!name || state.players[name]!=null) return;
+  state.players[name] = 0;
+  input.value='';
+  await saveState();
+};
+document.getElementById('newPlayerName').addEventListener('keydown', e=>{
+  if(e.key==='Enter') document.getElementById('btnAddPlayer').click();
+});
+
+document.getElementById('btnNewRound').onclick = async ()=>{
+  await loadState();
+  const total = RAETSEL.length;
+  const available = [...Array(total).keys()].filter(i=>!(state.usedIndices||[]).includes(i));
+  if(!available.length){
+    state.riddleIndex = null; state.poolExhausted = true; await saveState(); return;
+  }
+  const idx = available[Math.floor(Math.random()*available.length)];
+  const { data, error } = await sb.rpc('party_buzzer_new_round',{p_game:'emoji',p_index:idx});
+  if(error){ console.error(error); return; }
+  if(data && data.state) state=data.state;
+  render();
+};
+
+document.getElementById('btnReveal').onclick = async ()=>{
+  const { data, error } = await sb.rpc('party_buzzer_reveal',{p_game:'emoji',p_action:'step'});
+  if(!error && data){ state=data; render(); }
+};
+
+setInterval(async () => {
+  if(!state || state.riddleIndex==null || state.solved || state.revealedCount>=4 || !state.timerRunning) return;
+  const {data,error}=await sb.rpc('emoji_timer_tick');
+  if(!error && data){state=data;render();}
+}, 500);
+
+document.getElementById('btnResetPool').onclick = async ()=>{
+  const { data, error } = await sb.rpc('party_buzzer_reset_pool',{p_game:'emoji'});
+  if(!error && data){ state=data; render(); }
+};
+
+document.getElementById('btnCorrect').onclick = async ()=>{
+  if(emojiActionBusy || state.solved) return; emojiActionBusy=true;
+  try{
+    const {data,error}=await sb.rpc('party_buzzer_judge',{p_game:'emoji',p_outcome:'correct'});
+    if(error){console.error(error);return;}
+    if(data?.state){state=data.state;render();}
+    if(data?.accepted && window.RUNDEN) await RUNDEN.rundeFertig();
+    if(data?.accepted) setTimeout(()=>document.getElementById('btnNewRound').click(),3000);
+  } finally { emojiActionBusy=false; }
+};
+
+document.getElementById('btnWrong').onclick = async ()=>{
+  if(emojiActionBusy || state.solved) return; emojiActionBusy=true;
+  try{
+    const {data,error}=await sb.rpc('party_buzzer_judge',{p_game:'emoji',p_outcome:'wrong'});
+    if(error){console.error(error);return;} if(data?.state){state=data.state;render();}
+  } finally { emojiActionBusy=false; }
+};
+
+document.getElementById('btnRevealAnswer').onclick = async ()=>{
+  if(emojiActionBusy || state.solved) return; emojiActionBusy=true;
+  try{
+    const {data,error}=await sb.rpc('party_buzzer_reveal',{p_game:'emoji',p_action:'answer'});
+    if(error){console.error(error);return;} if(data){state=data;render();}
+    if(window.RUNDEN) await RUNDEN.rundeFertig();
+    setTimeout(()=>document.getElementById('btnNewRound').click(),3000);
+  } finally { emojiActionBusy=false; }
+};
+</script>
+<script src="../zurueck.js"></script>
+<script src="../hintergrund.js"></script>
+
+
+
+<script>
+  if(window.SpielBeenden) SpielBeenden.init({
+    format: 'emoji',
+    sammle: async function () {
+      const { data } = await sb.from('er_state').select('state').eq('id', 1).single();
+      const players = (data && data.state && data.state.players) || {};
+      return Object.entries(players).map(function (e) {
+        return { spieler: e[0], punkte: e[1] };
+      });
+    }
+  });
+</script>
+
+<script>
+// Rundenlimit: legt fest, wie viele Runden dieses Format laeuft.
+if(window.RUNDEN) RUNDEN.init({
+  key: 'er',
+  state: function(){ return state; },
+  speichern: async function(s){ state = s; await saveState(); },
+  zaehler: function(s){ return (s.usedIndices || []).length; },
+  reset: function(s){ s.usedIndices = []; },
+  standard: 30
+});
+</script>
+
+<script>
+// Turnier: Rolle merken und auf Formatwechsel horchen.
+// Schaltet der Spielleiter weiter, springt dieses Geraet mit.
+if(window.TURNIER){
+  TURNIER.setzeRolle('sl');
+  TURNIER.starte(typeof sb !== "undefined" ? sb : null);
+}
+</script>
+<script src="../active-stream-mode.js?v=48"></script>
+</body>
+</html>

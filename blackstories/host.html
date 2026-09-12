@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html class="host" lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>Black Stories - Host</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Eater&family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../public-client.js"></script>
+<script src="../server-time.js?v=48"></script>
+
+<script src="../crew.js"></script>
+<script src="../kern-render.js"></script>
+<style>
+  /* Handy-Skalierung: Bezugsgroesse wechselt hochkant auf die Hoehe */
+  :root{ --u: 1vw; }
+  @media (max-width:900px) and (orientation:portrait){
+    :root{ --u: 0.62vh; }
+    html.host, body.host{ height:auto; min-height:100%; overflow-y:auto; overflow-x:hidden; }
+  }
+  @media (max-width:900px) and (orientation:portrait) and (min-aspect-ratio:3/5){
+    :root{ --u: 0.72vh; }
+  }
+  @media (max-height:520px) and (orientation:landscape){
+    :root{ --u: 1.35vh; }
+  }
+
+  .avatar-pic{
+  width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0;
+  }
+  :root{
+    --bg-0:#0a0714;
+    --bg-1:#150c24;
+    --panel:#160f28;
+    --panel-border:rgba(160,130,255,.22);
+    --teal:#3fe6e0;
+    --teal-dim:rgba(63,230,224,.14);
+    --gold:#ffb545;
+    --gold-dim:rgba(255,181,69,.14);
+    --red:#ff3d68;
+    --red-dim:rgba(255,61,104,.14);
+    --purple:#9b6bff;
+    --purple-dim:rgba(155,107,255,.14);
+    --text:#f3eefc;
+    --text-dim:#9d8fc0;
+    --font-display:'Eater',cursive;
+    --font-ui:'Chakra Petch',sans-serif;
+    --font-body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{
+    width:1920px;height:1080px;
+    background:
+      radial-gradient(ellipse at 50% -10%, rgba(120,70,220,.25), transparent 55%),
+      radial-gradient(ellipse at 15% 100%, rgba(255,61,104,.10), transparent 45%),
+      radial-gradient(ellipse at 85% 100%, rgba(63,230,224,.08), transparent 45%),
+      linear-gradient(180deg, var(--bg-0), var(--bg-1));
+    color:var(--text);
+    font-family:var(--font-body);
+    overflow:hidden;
+    position:relative;
+  }
+
+  .web{position:absolute;width:90px;height:90px;opacity:.35;color:var(--purple);}
+  .web.tl{top:24px;left:24px;}
+  .web.tr{top:24px;right:24px;transform:scaleX(-1);}
+
+  .particles{position:absolute;inset:0;pointer-events:none;overflow:hidden;}
+  .particle{position:absolute;bottom:-60px;opacity:0;width:26px;height:26px;color:var(--purple);filter:drop-shadow(0 0 6px rgba(155,107,255,.5));animation:float linear infinite;}
+  .particle svg{width:100%;height:100%;}
+  @keyframes float{
+    0%{transform:translateY(0) translateX(0) rotate(0deg);opacity:0;}
+    8%{opacity:.55;}
+    92%{opacity:.4;}
+    100%{transform:translateY(-1160px) translateX(var(--drift,40px)) rotate(25deg);opacity:0;}
+  }
+
+  .titlebar{position:absolute;top:28px;left:130px;right:130px;display:flex;align-items:baseline;gap:14px;font-family:var(--font-ui);}
+  .titlebar .show-title{font-size:26px;font-weight:700;letter-spacing:.5px;color:var(--text);}
+  .titlebar .show-subtitle{font-size:18px;font-weight:500;color:var(--text-dim);}
+
+  .statusbar{position:absolute;top:24px;left:50%;transform:translateX(-50%);display:flex;gap:14px;}
+  .pill{
+    display:flex;align-items:center;gap:10px;
+    padding:10px 20px;border-radius:999px;
+    background:var(--pill-dim,rgba(255,255,255,.05));
+    border:1.5px solid var(--pill-color,rgba(255,255,255,.2));
+    font-family:var(--font-ui);font-weight:700;font-size:20px;
+    color:var(--pill-color,var(--text));
+    box-shadow:0 0 18px -4px var(--pill-color,transparent);
+  }
+  .pill svg{width:20px;height:20px;flex-shrink:0;}
+  .pill.gold{--pill-color:var(--gold);--pill-dim:var(--gold-dim);}
+  .pill.red{--pill-color:var(--red);--pill-dim:var(--red-dim);}
+  .pill.purple{--pill-color:var(--purple);--pill-dim:var(--purple-dim);}
+  .pill.teal{--pill-color:var(--teal);--pill-dim:var(--teal-dim);}
+  .pill .label{font-size:13px;letter-spacing:1px;color:var(--text-dim);font-weight:600;margin-right:2px;}
+
+  .stage{position:absolute;top:118px;left:50%;transform:translateX(-50%);width:1060px;display:flex;flex-direction:column;align-items:center;}
+
+  /* Blutmond hinter dem Logo */
+  .mond{
+    position:absolute;left:50%;top:-46px;transform:translateX(-50%);
+    width:190px;height:190px;border-radius:50%;z-index:1;pointer-events:none;
+    background:radial-gradient(circle at 38% 34%, #ff6b86 0%, #b3243f 46%, #4a0a1a 78%, transparent 80%);
+    filter:blur(1px) drop-shadow(0 0 60px rgba(255,61,104,.5));
+    opacity:.42;
+    animation:mondGlut 6.5s ease-in-out infinite;
+  }
+  @keyframes mondGlut{
+    0%,100%{opacity:.34;transform:translateX(-50%) scale(1);}
+    50%{opacity:.55;transform:translateX(-50%) scale(1.05);}
+  }
+  /* Kratzer ueber dem Mond */
+  .mond::after{
+    content:'';position:absolute;inset:0;border-radius:50%;
+    background:
+      linear-gradient(114deg,transparent 43%,rgba(30,6,14,.65) 45%,transparent 47%),
+      linear-gradient(72deg,transparent 61%,rgba(30,6,14,.45) 63%,transparent 65%);
+  }
+
+  /* Nebelschwaden unter dem Logo */
+  .nebel{
+    position:absolute;left:50%;top:82px;transform:translateX(-50%);
+    width:560px;height:70px;z-index:1;pointer-events:none;opacity:.5;
+    background:
+      radial-gradient(ellipse 46% 58% at 26% 52%, rgba(155,107,255,.4), transparent 70%),
+      radial-gradient(ellipse 40% 52% at 68% 46%, rgba(63,230,224,.28), transparent 72%);
+    filter:blur(13px);
+    animation:nebelZieht 13s ease-in-out infinite alternate;
+  }
+  @keyframes nebelZieht{
+    0%{transform:translateX(-52%) scaleX(1);}
+    100%{transform:translateX(-48%) scaleX(1.12);}
+  }
+
+  .card{
+    width:100%;
+    background:var(--panel);
+    border:1.5px solid var(--panel-border);
+    border-radius:22px;
+    box-shadow:0 20px 60px -20px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.04);
+    padding:44px 56px;
+    text-align:center;
+    position:relative;
+    min-height:220px;
+  }
+
+  .idle-wrap{padding:40px 0 14px;}
+  .idle-title{font-family:var(--font-ui);font-size:30px;font-weight:700;letter-spacing:1px;color:var(--text);margin-bottom:10px;}
+  .idle-sub{font-family:var(--font-body);font-size:18px;color:var(--text-dim);}
+
+  .badge{
+    display:inline-flex;align-items:center;padding:8px 20px;border-radius:999px;
+    border:1.5px solid var(--teal);color:var(--teal);background:var(--teal-dim);
+    font-family:var(--font-ui);font-weight:700;font-size:15px;letter-spacing:1.5px;
+    text-transform:uppercase;margin-bottom:22px;
+    transition:all .25s ease;
+  }
+  .badge.wrong{border-color:var(--red);color:var(--red);background:var(--red-dim);}
+  .badge.right{border-color:var(--gold);color:var(--gold);background:var(--gold-dim);}
+
+  .story-text{font-family:var(--font-body);font-size:28px;font-weight:600;line-height:1.45;color:var(--text);}
+
+  .solution-box{
+    margin-top:28px;padding-top:28px;border-top:1px solid var(--panel-border);
+  }
+  .solution-box .badge{border-color:var(--teal);color:var(--teal);background:var(--teal-dim);}
+  .solution-text{font-family:var(--font-body);font-size:21px;line-height:1.55;color:var(--text-dim);font-weight:500;}
+
+  .scoreboard{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin-top:32px;max-width:1060px;}
+  .score-pill{
+    display:flex;align-items:center;gap:10px;
+    padding:9px 18px 9px 14px;border-radius:999px;
+    background:rgba(255,255,255,.04);
+    border:1.5px solid rgba(255,255,255,.12);
+    font-family:var(--font-ui);font-weight:600;font-size:16px;
+    color:var(--text-dim);
+    transition:all .25s ease;
+  }
+  .score-pill .name{color:var(--text);}
+  .score-pill .score{font-weight:700;color:var(--teal);min-width:18px;text-align:right;}
+  .score-pill.turn{
+    border-color:var(--gold);
+    background:var(--gold-dim);
+    box-shadow:0 0 22px -6px var(--gold);
+    transform:translateY(-2px);
+  }
+  .score-pill.turn .name,.score-pill.turn .score{color:var(--gold);}
+  .score-pill .turn-dot{width:7px;height:7px;border-radius:50%;background:var(--gold);box-shadow:0 0 8px var(--gold);opacity:0;}
+  .score-pill.turn .turn-dot{opacity:1;}
+
+  .flash{animation:pulse .5s ease;}
+  @keyframes pulse{0%{transform:scale(1);}30%{transform:scale(1.035);}100%{transform:scale(1);}}
+
+  .confetti-piece{position:absolute;top:-20px;width:9px;height:14px;opacity:.9;pointer-events:none;animation:confetti-fall linear forwards;}
+  @keyframes confetti-fall{
+    0%{transform:translateY(0) rotate(0deg);opacity:1;}
+    100%{transform:translateY(680px) rotate(540deg);opacity:0;}
+  }
+
+  .hidden{display:none !important;}
+</style>
+<link rel="stylesheet" href="../responsive.css" />
+<link rel="stylesheet" href="../show-camera.css">
+\n<style>\n/* v48 OBS: Spielinhalt bleibt oberhalb der Kamera-Leiste. */\nbody.ka-stream .stage,body.ka-stream main{padding-bottom:23vh!important}\n</style>\n</head>
+<body class="host">
+
+  <svg class="web tl" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M0 0 L100 100 M0 40 Q40 40 40 0 M0 70 Q70 70 70 0 M0 100 Q100 100 100 0 M0 20 Q20 20 20 0 M15 55 Q55 55 55 15"/></svg>
+  <svg class="web tr" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M0 0 L100 100 M0 40 Q40 40 40 0 M0 70 Q70 70 70 0 M0 100 Q100 100 100 0 M0 20 Q20 20 20 0 M15 55 Q55 55 55 15"/></svg>
+
+  <div class="particles" id="particles"></div>
+
+  <div class="titlebar">
+    <span class="show-title" id="showTitle">BLACK STORIES</span>
+    <span class="show-subtitle" id="showSubtitle"></span>
+  </div>
+
+  <div class="statusbar">
+    <div class="pill gold">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/></svg>
+      <span id="statCorrect">0</span>
+    </div>
+    <div class="pill red">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      <span id="statWrong">0</span>
+    </div>
+    <div class="pill purple">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
+      <span id="statTimer">01:00</span>
+    </div>
+    <div class="pill teal">
+      <span class="label">ROUND</span><span id="statRound">0</span>
+    </div>
+  </div>
+
+  <div class="stage">
+
+    <div class="card" id="card">
+      <div class="idle-wrap" id="idleView">
+        <div class="idle-title">WAITING FOR NEXT ROUND</div>
+        <div class="idle-sub">Get ready for the next mystery&hellip;</div>
+      </div>
+
+      <div id="activeView" class="hidden">
+        <div class="badge" id="entryBadge">Kategorie</div>
+        <div class="story-text" id="storyText"></div>
+
+        <div class="solution-box hidden" id="solutionBox">
+          <div class="badge">Solution</div>
+          <div class="solution-text" id="solutionText"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="scoreboard" id="scoreboard"></div>
+  </div>
+
+<script>
+
+let sb = null;
+let state = null;
+let lastEntryNonce = null;
+let timerInterval = null;
+
+async function loadState(){
+  if(!sb) return;
+  const { data, error } = await sb.from('bs_state').select('data').eq('id','main').limit(1).maybeSingle();
+  if(error){ console.error(error); return; }
+  applyState(data.data || {});
+}
+
+try {
+  if(typeof window.supabase === 'undefined'){
+    throw new Error('Supabase-Bibliothek konnte nicht geladen werden (CDN nicht erreichbar?)');
+  }
+  sb = window.KA_SB;
+
+  sb.channel('bs_state_host')
+    .on('postgres_changes', { event:'UPDATE', schema:'public', table:'bs_state', filter:'id=eq.main' }, payload => {
+      applyState(payload.new.data || {});
+    })
+    .subscribe();
+
+  loadState();
+} catch(err){
+  console.error(err);
+  document.getElementById('idleView').innerHTML =
+    `<div class="idle-title" style="color:var(--red)">Keine Verbindung</div><div class="idle-sub">${err.message}</div>`;
+}
+
+function fmtTime(sec){
+  sec = Math.max(0, Math.round(sec));
+  const m = Math.floor(sec/60).toString().padStart(2,'0');
+  const s = (sec%60).toString().padStart(2,'0');
+  return `${m}:${s}`;
+}
+
+function currentRemaining(t){
+  if(!t) return 60;
+  if(t.running && t.startedAt){
+    const elapsed = (KA_NOW() - t.startedAt) / 1000;
+    return Math.max(0, t.duration - elapsed);
+  }
+  return t.remaining ?? t.duration ?? 60;
+}
+
+function tickTimer(){
+  if(!state || !state.timer) return;
+  document.getElementById('statTimer').textContent = fmtTime(currentRemaining(state.timer));
+}
+
+function applyState(s){
+  const prev = state;
+  state = s;
+
+  document.getElementById('showTitle').textContent = (s.meta && s.meta.title) || 'BLACK STORIES';
+  document.getElementById('showSubtitle').textContent = s.meta && s.meta.subtitle ? ('mit ' + s.meta.subtitle) : '';
+  document.getElementById('statCorrect').textContent = (s.stats && s.stats.correctTotal) || 0;
+  document.getElementById('statWrong').textContent = (s.stats && s.stats.wrongRound) || 0;
+  document.getElementById('statRound').textContent = (s.meta && s.meta.round) || 0;
+
+  clearInterval(timerInterval);
+  tickTimer();
+  timerInterval = setInterval(tickTimer, 500);
+
+  const phase = s.meta && s.meta.phase;
+  const idleView = document.getElementById('idleView');
+  const activeView = document.getElementById('activeView');
+  const solutionBox = document.getElementById('solutionBox');
+  const badge = document.getElementById('entryBadge');
+
+  if(phase === 'active' || phase === 'solved'){
+    idleView.classList.add('hidden');
+    activeView.classList.remove('hidden');
+    document.getElementById('storyText').textContent = (s.riddle && s.riddle.story) || '';
+
+    badge.classList.remove('wrong','right');
+    if(phase === 'solved'){
+      badge.textContent = (s.riddle && s.riddle.category) || '';
+      solutionBox.classList.remove('hidden');
+      document.getElementById('solutionText').textContent = (s.riddle && s.riddle.solution) || '';
+    } else {
+      solutionBox.classList.add('hidden');
+      const entry = s.lastEntry;
+      if(entry && entry.result === 'nein'){
+        badge.textContent = 'Falscher Eingang';
+        badge.classList.add('wrong');
+      } else if(entry && entry.result === 'ja'){
+        badge.textContent = 'Richtiger Eingang';
+        badge.classList.add('right');
+      } else {
+        badge.textContent = (s.riddle && s.riddle.category) || '';
+      }
+    }
+
+    if(prev){
+      const prevNonce = prev.lastEntry && prev.lastEntry.ts;
+      const newNonce = s.lastEntry && s.lastEntry.ts;
+      if(newNonce && newNonce !== prevNonce){
+        document.getElementById('card').classList.remove('flash');
+        void document.getElementById('card').offsetWidth;
+        document.getElementById('card').classList.add('flash');
+      }
+      if(prev.meta && prev.meta.phase !== 'solved' && phase === 'solved'){
+        launchConfetti();
+      }
+    }
+  } else {
+    idleView.classList.remove('hidden');
+    activeView.classList.add('hidden');
+  }
+
+  renderScoreboard(s);
+}
+
+const scoreboardListe = KernRender.liste(document.getElementById('scoreboard'), {
+  schluessel: p => p.name,
+  erstellen: p => {
+    const avatarUrl = avatarFor(p.name);
+    const el = document.createElement('div');
+    el.className = 'score-pill';
+    el.innerHTML = `
+      <span class="turn-dot"></span>
+      ${avatarUrl ? `<img class="avatar-pic" src="${avatarUrl}">` : ''}
+      <span class="name"></span>
+      <span class="score"></span>`;
+    return el;
+  },
+  aktualisieren: (el, p) => {
+    el.className = `score-pill ${p.__dran ? 'turn' : ''}`;
+    KernRender.textWennGeaendert(el.querySelector('.name'), escapeHtml(p.name));
+    KernRender.textWennGeaendert(el.querySelector('.score'), p.score);
+  }
+});
+
+function renderScoreboard(s){
+  const players = (s.players && s.players.length) ? s.players : [];
+  const turnIndex = s.turnIndex;
+  const showTurn = s.meta && s.meta.phase === 'active';
+  const datensaetze = players.map((p, i) => Object.assign({}, p, { __dran: showTurn && i === turnIndex }));
+  scoreboardListe.render(datensaetze);
+}
+
+function escapeHtml(str){
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+function launchConfetti(){
+  const colors = ['#3fe6e0','#ffb545','#ff3d68','#9b6bff','#4fe6a0'];
+  const stage = document.querySelector('.stage');
+  for(let i=0;i<40;i++){
+    const p = document.createElement('div');
+    p.className = 'confetti-piece';
+    p.style.left = (Math.random()*100) + '%';
+    p.style.background = colors[Math.floor(Math.random()*colors.length)];
+    p.style.animationDuration = (1.4 + Math.random()*1.2) + 's';
+    p.style.animationDelay = (Math.random()*.4) + 's';
+    stage.appendChild(p);
+    setTimeout(() => p.remove(), 3000);
+  }
+}
+
+const particleShapes = [
+
+  '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 6c-1.2-2-3.6-3.2-6-2.6.9 1 1.3 2 1.4 3C4.8 6 2.4 7.6 1 10.2c2.2-.6 4-.5 5.4.2-1.6 1-2.6 2.6-2.8 4.6 1.7-1.4 3.4-2 5-1.8.4 1.6 1.5 3 3.4 3.8 1.9-.8 3-2.2 3.4-3.8 1.6-.2 3.3.4 5 1.8-.2-2-1.2-3.6-2.8-4.6 1.4-.7 3.2-.8 5.4-.2C21.6 7.6 19.2 6 16.6 6.4c.1-1 .5-2 1.4-3-2.4-.6-4.8.6-6 2.6z"/></svg>',
+
+  '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c-4.4 0-8 3.6-8 8v11l2.5-2 2 2 1.5-1.5L12 21l2-1.5 1.5 1.5 2-2 2.5 2V10c0-4.4-3.6-8-8-8zm-3 9a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm6 0a1.5 1.5 0 110-3 1.5 1.5 0 010 3z"/></svg>',
+
+  '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M11 2v2.2C7 4.8 4 8 4 12.5 4 17.7 7.8 21 12 21s8-3.3 8-8.5c0-4.5-3-7.7-7-8.3V2h-2zM9 12c.6 0 1 .8 1 2s-.4 2-1 2-1-.8-1-2 .4-2 1-2zm6 0c.6 0 1 .8 1 2s-.4 2-1 2-1-.8-1-2 .4-2 1-2z"/></svg>'
+];
+function spawnParticle(){
+  const el = document.createElement('div');
+  el.className = 'particle';
+  el.innerHTML = particleShapes[Math.floor(Math.random()*particleShapes.length)];
+  el.style.left = (Math.random()*100) + '%';
+  el.style.setProperty('--drift', (Math.random()*160-80)+'px');
+  el.style.animationDuration = (14 + Math.random()*10) + 's';
+  document.getElementById('particles').appendChild(el);
+  setTimeout(() => el.remove(), 26000);
+}
+setInterval(spawnParticle, 3200);
+spawnParticle();
+</script>
+<script src="../zurueck.js"></script>
+<script src="../camera-config.js"></script>
+<script src="../stream-mode.js?v=48"></script>
+<script src="../show-camera.js?v=48"></script>
+<script src="../hintergrund.js"></script>
+<script src="../buehne-skalieren.js"></script>
+
+<script>
+// Turnier: Rolle merken und auf Formatwechsel horchen.
+// Schaltet der Spielleiter weiter, springt dieses Geraet mit.
+if(window.TURNIER){
+  TURNIER.setzeRolle('host');
+  TURNIER.starte(typeof sb !== "undefined" ? sb : null);
+}
+</script>
+<script>
+(function(){
+})();
+</script>
+<script src="../active-stream-mode.js?v=48"></script>
+</body>
+</html>

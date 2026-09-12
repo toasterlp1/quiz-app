@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>Imposter — Spielleiter</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@500;700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../eingabeschutz.js"></script>
+<script src="../public-client.js"></script>
+
+<script src="../kern-render.js"></script>
+<script src="./woerter.js"></script>
+<style>
+  .avatar-pic{
+  width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0;
+}
+  :root{
+    --bg:#0a0e1a; --panel:#12172a; --panel-border:#232b45;
+    --ink:#eef1f8; --muted:#6b7488; --accent:#ff5b3a; --warn:#ffd166; --bad:#ff3860; --good:#00e5c7;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-serif;padding:24px;min-height:100vh;}
+  h1{font-family:'Anton',sans-serif;letter-spacing:2px;margin:0 0 20px;font-size:28px;}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;max-width:1150px;margin:0 auto;}
+  .card{background:var(--panel);border:1px solid var(--panel-border);border-radius:16px;padding:20px;}
+  .card.full{grid-column:1 / -1;}
+  .card h2{font-size:15px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin:0 0 14px;}
+  button{
+    font-family:'Inter',sans-serif;font-weight:700;border:none;border-radius:10px;
+    padding:12px 18px;cursor:pointer;font-size:14px;transition:transform .1s, opacity .15s;
+  }
+  button:active{transform:scale(.96);}
+  button:disabled{opacity:.35;cursor:not-allowed;}
+  .btn-primary{background:var(--accent);color:#2b0a00;}
+  .btn-warn{background:var(--warn);color:#241900;}
+  .btn-bad{background:var(--bad);color:#fff;}
+  .btn-good{background:var(--good);color:#04120f;}
+  .btn-ghost{background:#1b2138;color:var(--ink);border:1px solid var(--panel-border);}
+  .row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;align-items:center;}
+  input[type=text]{
+    background:#0d1220;border:1px solid var(--panel-border);color:var(--ink);
+    padding:10px 12px;border-radius:8px;font-family:'Inter',sans-serif;font-size:14px;flex:1;
+  }
+  select{
+    background:#0d1220;border:1px solid var(--panel-border);color:var(--ink);
+    padding:8px 10px;border-radius:8px;font-family:'Inter',sans-serif;font-size:13px;
+  }
+  .secret-box{
+    background:#1a0e08;border:2px solid var(--accent);border-radius:12px;padding:16px;margin-bottom:16px;
+  }
+  .secret-box .lbl{font-size:12px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;}
+  .secret-box .val{font-family:'Anton',sans-serif;font-size:22px;margin-top:2px;}
+  .secret-box .imp-name{color:var(--accent);}
+  .status-line{font-size:14px;color:var(--muted);margin-bottom:12px;}
+  .status-line b{color:var(--ink);}
+  .players{display:flex;flex-direction:column;gap:8px;}
+  .player-row{
+    display:flex;align-items:center;gap:10px;background:#0d1220;
+    border:1px solid var(--panel-border);border-radius:8px;padding:8px 10px;
+  }
+  .player-row .name{flex:1;font-weight:700;}
+  .player-row .score{font-family:'Anton',sans-serif;font-size:20px;color:var(--good);min-width:36px;text-align:center;}
+  .mini{padding:6px 10px;font-size:12px;}
+  .vote-row{
+    display:flex;align-items:center;gap:10px;background:#0d1220;
+    border:1px solid var(--panel-border);border-radius:8px;padding:8px 10px;
+  }
+  .vote-row .name{flex:1;font-weight:700;}
+  .tally{font-size:13px;color:var(--muted);margin-top:10px;}
+  .result-banner{
+    font-family:'Anton',sans-serif;font-size:20px;padding:14px;border-radius:10px;margin-top:14px;
+    background:#0d1220;border:1px solid var(--panel-border);
+  }
+
+@media (max-width:820px){
+  body{padding:14px;}
+  .grid{grid-template-columns:1fr;gap:14px;}
+  .row{flex-wrap:wrap;}
+  .team-score-row,.score-row,.jn-row,.stat-mini{flex-wrap:wrap;}
+  button,select,input{min-height:40px;}
+}
+</style>
+<link rel="stylesheet" href="../responsive.css" />
+
+</head>
+<body>
+<h1>IMPOSTER — SPIELLEITER</h1>
+<div class="grid">
+
+  <div class="card">
+    <h2>Spieler</h2>
+    <div class="row">
+      <input type="text" id="newPlayerName" placeholder="Name eingeben…" />
+      <button class="btn-primary" id="btnAddPlayer">Hinzufügen</button>
+    </div>
+    <div class="players" id="players"></div>
+  </div>
+
+  <div class="card">
+    <h2>Runde</h2>
+    <div class="status-line" id="statusLine">Keine Runde aktiv.</div>
+    <div class="secret-box" id="secretBox" style="display:none;">
+      <div class="lbl">Nur für dich sichtbar</div>
+      <div class="val">Kategorie: <span id="secretKat"></span></div>
+      <div class="val">Wort: <span id="secretWort"></span></div>
+      <div class="val">Imposter: <span class="imp-name" id="secretImp"></span></div>
+    </div>
+    <div class="row">
+      <button class="btn-primary" id="btnNewRound">Neue Runde starten</button>
+      <button class="btn-ghost" id="btnResetPool">Pool zurücksetzen</button>
+    </div>
+    <div class="row" id="hintRow" style="display:none;">
+      <button class="btn-warn" id="btnHint">Nächste Hinweisrunde</button>
+      <span id="hintLabel" style="color:var(--muted);font-size:14px;"></span>
+      <button class="btn-primary" id="btnToVoting">Zur Abstimmung</button>
+    </div>
+  </div>
+
+  <div class="card full" id="votingCard" style="display:none;">
+    <h2>Abstimmung</h2>
+    <div id="voteRows"></div>
+    <div class="tally" id="tally"></div>
+    <div class="row" style="margin-top:14px;align-items:center;">
+      <span style="color:var(--muted);font-size:14px;">Rausgevotet wurde:</span>
+      <select id="ejectSelect"></select>
+      <button class="btn-bad" id="btnEvaluate">Abstimmung auswerten</button>
+    </div>
+  </div>
+
+  <div class="card full" id="guessCard" style="display:none;">
+    <h2>Imposter wurde enttarnt — errät er das Wort?</h2>
+    <div class="row">
+      <button class="btn-bad" id="btnGuessCorrect">Wort richtig erraten</button>
+      <button class="btn-good" id="btnGuessWrong">Wort falsch geraten</button>
+    </div>
+  </div>
+
+  <div class="card full" id="resultCard" style="display:none;">
+    <div class="result-banner" id="resultBanner"></div>
+  </div>
+
+</div>
+
+<script>
+const sb = window.KA_SB;
+const defaultState = {
+  players:{}, usedIndices:[], wordIndex:null, imposterName:null,
+  phase:'idle', hintRound:1, votes:{}, ejected:null, guessResult:null, lastResult:null
+};
+let state = JSON.parse(JSON.stringify(defaultState));
+
+// Spielerliste ruhig verwalten - kein Neuaufbau bei jedem Render.
+const spielerListe = KernRender.liste(document.getElementById('players'), {
+  schluessel: name => name,
+  erstellen: () => {
+    const el = document.createElement('div');
+    el.className = 'player-row';
+    el.innerHTML = `
+      <span class="name"></span>
+      <button class="btn-ghost mini" data-adj="-1">−1</button>
+      <span class="score"></span>
+      <button class="btn-ghost mini" data-adj="1">+1</button>
+      <button class="btn-bad mini" data-remove>Entfernen</button>`;
+    return el;
+  },
+  aktualisieren: (el, name) => {
+    KernRender.textWennGeaendert(el.querySelector('.name'), name);
+    KernRender.textWennGeaendert(el.querySelector('.score'), state.players[name]);
+    el.querySelectorAll('[data-adj]').forEach(b => {
+      b.onclick = async () => {
+        state.players[name] = (state.players[name]||0) + parseInt(b.dataset.adj,10);
+        await saveState();
+      };
+    });
+    el.querySelector('[data-remove]').onclick = async () => {
+      delete state.players[name];
+      delete state.votes[name];
+      await saveState();
+      try { await sb.rpc('deactivate_public_player', { p_name:name, p_format:'imposter' }); } catch(e) {}
+    };
+  }
+});
+
+async function loadState(){
+  const { data } = await sb.from('imp_state').select('state').eq('id',1).single();
+  state = Object.assign(JSON.parse(JSON.stringify(defaultState)), data?.state||{});
+  render();
+}
+async function saveState(){
+  await sb.from('imp_state').update({ state }).eq('id',1);
+}
+loadState();
+
+sb.channel('imp_state_channel_sl')
+  .on('postgres_changes', { event:'*', schema:'public', table:'imp_state' }, payload=>{
+    state = payload.new.state || state;
+    render();
+  }).subscribe();
+
+
+async function syncPublicPlayers(){
+  const {data}=await sb.from('public_players').select('name').eq('format','imposter').eq('active',true); if(!data)return;
+  const latest=await sb.from('imp_state').select('state').eq('id',1).single();
+  if(latest.data?.state) state=latest.data.state;
+  if(!state)return;
+  let changed=false; data.forEach(r=>{if(state.players[r.name]==null){state.players[r.name]=0;changed=true;}}); if(changed) await saveState();
+}
+setInterval(syncPublicPlayers,1800); setTimeout(syncPublicPlayers,600);
+
+function playerNames(){ return Object.keys(state.players); }
+
+function render(){
+
+  spielerListe.render(playerNames());
+
+  const statusLine = document.getElementById('statusLine');
+  const secretBox = document.getElementById('secretBox');
+  const hintRow = document.getElementById('hintRow');
+  const votingCard = document.getElementById('votingCard');
+  const guessCard = document.getElementById('guessCard');
+  const resultCard = document.getElementById('resultCard');
+
+  secretBox.style.display='none';
+  hintRow.style.display='none';
+  votingCard.style.display='none';
+  guessCard.style.display='none';
+  resultCard.style.display='none';
+
+  if(state.phase==='idle'){
+    statusLine.textContent = 'Keine Runde aktiv.';
+  } else if(WOERTER[state.wordIndex]){
+    const w = WOERTER[state.wordIndex];
+    if(state.phase==='assigned'){
+      statusLine.innerHTML = `Runde läuft — Diskussion. Hinweisrunde <b>${state.hintRound}/2</b>.`;
+      secretBox.style.display='block';
+      document.getElementById('secretKat').textContent = w.kategorie;
+      document.getElementById('secretWort').textContent = w.wort;
+      document.getElementById('secretImp').textContent = state.imposterName;
+      hintRow.style.display='flex';
+      document.getElementById('hintLabel').textContent = `Hinweisrunde ${state.hintRound}/2`;
+    } else if(state.phase==='voting'){
+      statusLine.innerHTML = `Abstimmung läuft.`;
+      secretBox.style.display='block';
+      document.getElementById('secretKat').textContent = w.kategorie;
+      document.getElementById('secretWort').textContent = w.wort;
+      document.getElementById('secretImp').textContent = state.imposterName;
+      renderVoting();
+      votingCard.style.display='block';
+    } else if(state.phase==='guess'){
+      statusLine.innerHTML = `Imposter <b>${state.imposterName}</b> wurde enttarnt.`;
+      secretBox.style.display='block';
+      document.getElementById('secretKat').textContent = w.kategorie;
+      document.getElementById('secretWort').textContent = w.wort;
+      document.getElementById('secretImp').textContent = state.imposterName;
+      guessCard.style.display='block';
+    } else if(state.phase==='resolved'){
+      statusLine.innerHTML = `Runde beendet.`;
+      resultCard.style.display='block';
+      document.getElementById('resultBanner').textContent = state.lastResult || '';
+    }
+  }
+}
+
+function renderVoting(){
+  const voteRowsEl = document.getElementById('voteRows');
+  const names = playerNames();
+  voteRowsEl.innerHTML = names.map(name=>{
+    const options = names.filter(n=>n!==name).map(n=>{
+      const sel = state.votes[name]===n ? 'selected' : '';
+      return `<option value="${n}" ${sel}>${n}</option>`;
+    }).join('');
+    return `<div class="vote-row">
+      <span class="name">${name} hat gevotet für:</span>
+      <select data-voter="${name}">
+        <option value="">— wählen —</option>
+        ${options}
+      </select>
+    </div>`;
+  }).join('');
+  voteRowsEl.querySelectorAll('select').forEach(sel=>{
+    sel.onchange = async ()=>{
+      const voter = sel.dataset.voter;
+      state.votes[voter] = sel.value || null;
+      await saveState();
+    };
+  });
+
+  const tally = {};
+  Object.values(state.votes).forEach(v=>{ if(v) tally[v] = (tally[v]||0)+1; });
+  const tallyEl = document.getElementById('tally');
+  const entries = Object.entries(tally).sort((a,b)=>b[1]-a[1]);
+  tallyEl.textContent = entries.length
+    ? 'Stimmen: ' + entries.map(([n,c])=>`${n} (${c})`).join(', ')
+    : 'Noch keine Stimmen eingetragen.';
+
+  const ejectSelect = document.getElementById('ejectSelect');
+  const topChoice = entries.length ? entries[0][0] : '';
+  ejectSelect.innerHTML = names.map(n=>`<option value="${n}" ${n===topChoice?'selected':''}>${n}</option>`).join('');
+}
+
+document.getElementById('btnAddPlayer').onclick = async ()=>{
+  const input = document.getElementById('newPlayerName');
+  const name = input.value.trim();
+  if(!name || state.players[name]!=null) return;
+  state.players[name] = 0;
+  input.value='';
+  await saveState();
+};
+document.getElementById('newPlayerName').addEventListener('keydown', e=>{
+  if(e.key==='Enter') document.getElementById('btnAddPlayer').click();
+});
+
+document.getElementById('btnNewRound').onclick = async ()=>{
+  if(impActionBusy) return;
+  impActionBusy = true;
+  const names = playerNames();
+  if(names.length < 3){ alert('Mindestens 3 Spieler nötig.'); impActionBusy=false; return; }
+  const total = WOERTER.length;
+  let available = [...Array(total).keys()].filter(i=>!state.usedIndices.includes(i));
+  if(available.length===0){ state.usedIndices=[]; available=[...Array(total).keys()]; }
+  const idx = available[Math.floor(Math.random()*available.length)];
+  state.wordIndex = idx;
+  state.usedIndices.push(idx);
+  state.imposterName = names[Math.floor(Math.random()*names.length)];
+  state.phase = 'assigned';
+  state.hintRound = 1;
+  state.votes = {};
+  state.ejected = null;
+  state.guessResult = null;
+  state.lastResult = null;
+  try { await saveState(); } finally { impActionBusy = false; }
+};
+
+document.getElementById('btnResetPool').onclick = async ()=>{
+  state.usedIndices = [];
+  await saveState();
+};
+
+document.getElementById('btnHint').onclick = async ()=>{
+  state.hintRound = Math.min(2, state.hintRound + 1);
+  await saveState();
+};
+
+document.getElementById('btnToVoting').onclick = async ()=>{
+  state.phase = 'voting';
+  await saveState();
+};
+
+document.getElementById('btnEvaluate').onclick = async ()=>{
+  if(impActionBusy || state.phase !== 'voting') return;
+  impActionBusy = true;
+  const ejected = document.getElementById('ejectSelect').value;
+  state.ejected = ejected;
+  if(ejected === state.imposterName){
+    state.phase = 'guess';
+  } else {
+    state.players[state.imposterName] = (state.players[state.imposterName]||0) + 3;
+    state.lastResult = `Falsche Person rausgevotet (${ejected}) — Imposter ${state.imposterName} tarnt sich erfolgreich und bekommt 3 Punkte. Das Wort war "${WOERTER[state.wordIndex].wort}".`;
+    state.phase = 'resolved';
+  }
+  try {
+    await saveState();
+    if(window.RUNDEN) await RUNDEN.rundeFertig();
+  } finally { impActionBusy = false; }
+};
+
+document.getElementById('btnGuessCorrect').onclick = async ()=>{
+  if(impActionBusy || state.phase !== 'guess') return;
+  impActionBusy = true;
+  state.players[state.imposterName] = (state.players[state.imposterName]||0) + 2;
+  state.lastResult = `Imposter ${state.imposterName} wurde enttarnt, errät aber das Wort "${WOERTER[state.wordIndex].wort}" richtig und bekommt 2 Punkte.`;
+  state.phase = 'resolved';
+  try {
+    await saveState();
+    if(window.RUNDEN) await RUNDEN.rundeFertig();
+  } finally { impActionBusy = false; }
+};
+
+document.getElementById('btnGuessWrong').onclick = async ()=>{
+  if(impActionBusy || state.phase !== 'guess') return;
+  impActionBusy = true;
+  const imp = state.imposterName;
+  Object.entries(state.votes).forEach(([voter, votedFor])=>{
+    if(voter!==imp && votedFor===imp){
+      state.players[voter] = (state.players[voter]||0) + 1;
+    }
+  });
+  state.lastResult = `Imposter ${imp} wurde enttarnt und errät das Wort "${WOERTER[state.wordIndex].wort}" falsch — alle Crew-Mitglieder, die richtig gevotet haben, bekommen 1 Punkt.`;
+  state.phase = 'resolved';
+  try {
+    await saveState();
+    if(window.RUNDEN) await RUNDEN.rundeFertig();
+  } finally { impActionBusy = false; }
+};
+</script>
+<script src="../zurueck.js"></script>
+<script src="../hintergrund.js"></script>
+
+
+
+<script>
+  if(window.SpielBeenden) SpielBeenden.init({
+    format: 'imposter',
+    sammle: async function () {
+      const { data } = await sb.from('imp_state').select('state').eq('id', 1).single();
+      const players = (data && data.state && data.state.players) || {};
+      return Object.entries(players).map(function (e) {
+        return { spieler: e[0], punkte: e[1] };
+      });
+    }
+  });
+</script>
+
+<script>
+// Rundenlimit: legt fest, wie viele Runden dieses Format laeuft.
+if(window.RUNDEN) RUNDEN.init({
+  key: 'imp',
+  state: function(){ return state; },
+  speichern: async function(s){ state = s; await save(); },
+  zaehler: function(s){ return (s.usedIndices || []).length; },
+  reset: function(s){ s.usedIndices = []; },
+  standard: 15
+});
+</script>
+
+<script>
+// Turnier: Rolle merken und auf Formatwechsel horchen.
+// Schaltet der Spielleiter weiter, springt dieses Geraet mit.
+if(window.TURNIER){
+  TURNIER.setzeRolle('sl');
+  TURNIER.starte(typeof sb !== "undefined" ? sb : null);
+}
+</script>
+<script src="../active-stream-mode.js?v=48"></script>
+</body>
+</html>

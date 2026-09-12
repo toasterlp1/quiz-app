@@ -1,0 +1,872 @@
+<!doctype html>
+<html class="host" lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>Higher or Lower — Host</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Manrope:wght@600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../public-client.js"></script>
+<script src="../server-time.js?v=48"></script>
+
+<script src="../crew.js"></script>
+<script src="../kern-render.js"></script>
+<script src="../symbole.js"></script>
+<style>
+  /* Handy-Skalierung: Bezugsgroesse wechselt hochkant auf die Hoehe */
+  :root{ --u: 1vw; }
+  @media (max-width:900px) and (orientation:portrait){
+    :root{ --u: 0.62vh; }
+    html.host, body.host{ height:auto; min-height:100%; overflow-y:auto; overflow-x:hidden; }
+  }
+  @media (max-width:900px) and (orientation:portrait) and (min-aspect-ratio:3/5){
+    :root{ --u: 0.72vh; }
+  }
+  @media (max-height:520px) and (orientation:landscape){
+    :root{ --u: 1.35vh; }
+  }
+
+  .avatar-pic{
+    width:52px;height:52px;border-radius:50%;object-fit:cover;flex-shrink:0;
+    border:2px solid var(--border);transition:border-color .3s ease, box-shadow .3s ease, transform .3s ease;
+  }
+  .avatar-fallback{
+    display:flex;align-items:center;justify-content:center;
+    background:var(--panel-2);color:var(--muted);font-family:'Bebas Neue',sans-serif;
+    font-size:20px;letter-spacing:1px;
+  }
+  :root{
+    --bg:#0b0e14; --panel:#151a24; --panel-2:#1b2230; --border:#2a3244;
+    --ink:#f3f1e8; --muted:#7c8494; --gold:#d9a441; --gold-glow:rgba(217,164,65,.35);
+    --crimson:#e2495a; --mint:#35d0a4;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:transparent;width:calc(100 * var(--u));height:100vh;overflow:hidden;font-family:'Manrope',sans-serif;}
+
+  .stage{
+    position:relative;width:calc(100 * var(--u));height:100vh;overflow:hidden;user-select:none;
+    background:
+      radial-gradient(ellipse 1100px 500px at 50% -8%, rgba(217,164,65,.10), transparent 60%),
+      var(--bg);
+    display:flex;flex-direction:column;
+  }
+  .stage::before{
+    content:"";position:absolute;inset:0;pointer-events:none;
+    background-image:
+      linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+    background-size:56px 56px;
+    -webkit-mask-image:linear-gradient(to bottom, transparent, black 12%);
+    mask-image:linear-gradient(to bottom, transparent, black 12%);
+  }
+
+  .lives-strip{
+    display:flex;gap:10px;padding:14px 18px 0 74px;z-index:50;flex-wrap:wrap;
+    transition:filter .25s ease;flex-shrink:0;
+  }
+  .lives-strip.flash{filter:brightness(1.35);}
+  .player{
+    display:flex;flex-direction:column;align-items:center;gap:6px;
+    background:rgba(21,26,36,.75);backdrop-filter:blur(6px);
+    border:1px solid var(--border);border-radius:12px;padding:8px 14px;
+    transition:opacity .35s ease, transform .35s cubic-bezier(.2,.8,.2,1), border-color .3s ease;
+  }
+  .player.dead{opacity:.3;transform:scale(.94);border-color:var(--crimson);}
+  .player .name{font-size:11px;font-weight:800;letter-spacing:.3px;color:var(--ink);white-space:nowrap;}
+  .player .hearts{display:flex;gap:3px;align-items:center;}
+
+  .player.crit .avatar-pic{
+    border-color:var(--crimson);
+    box-shadow:0 0 0 2px rgba(226,73,90,.25), 0 0 16px rgba(226,73,90,.55);
+    animation:avatarCritPuls 1s ease-in-out infinite;
+  }
+  @keyframes avatarCritPuls{
+    0%,100%{ box-shadow:0 0 0 2px rgba(226,73,90,.2), 0 0 12px rgba(226,73,90,.45); }
+    50%    { box-shadow:0 0 0 4px rgba(226,73,90,.35), 0 0 26px rgba(226,73,90,.85); }
+  }
+
+  .heart-ic{width:14px;height:14px;flex:0 0 auto;transition:transform .25s ease;}
+  .heart-ic.full{color:var(--crimson);filter:drop-shadow(0 0 5px rgba(226,73,90,.65));}
+  .heart-ic.full.crit{animation:heartBeat 1s ease-in-out infinite;}
+  .heart-ic.empty{color:#333c4d;opacity:.55;}
+  @keyframes heartBeat{
+    0%,100%{ transform:scale(1); }
+    22%{ transform:scale(1.32); }
+    38%{ transform:scale(1); }
+    54%{ transform:scale(1.2); }
+    70%{ transform:scale(1); }
+  }
+  @keyframes heartPop{
+    0%{ transform:scale(1); }
+    35%{ transform:scale(1.5) rotate(-8deg); opacity:.2; }
+    100%{ transform:scale(0); opacity:0; }
+  }
+  .heart-ic.popping{ animation:heartPop .45s ease-in forwards; }
+
+  .header{text-align:center;z-index:40;pointer-events:none;flex-shrink:0;padding-top:8px;}
+
+  /* Runden-Badge oben links */
+  .round-badge{
+    position:absolute;left:74px;top:18px;z-index:60;pointer-events:none;
+    display:flex;align-items:center;gap:9px;
+    background:rgba(14,18,26,.82);border:1px solid rgba(255,255,255,.14);
+    border-radius:999px;padding:8px 18px;
+    box-shadow:0 6px 20px -8px rgba(0,0,0,.8), 0 0 18px -6px var(--gold-glow);
+    backdrop-filter:blur(6px);
+  }
+  .round-badge .lbl{
+    font-family:'Space Mono',monospace;font-size:10px;letter-spacing:2.5px;
+    color:var(--muted);text-transform:uppercase;
+  }
+  .round-badge .num{
+    font-family:'Bebas Neue',sans-serif;font-size:20px;line-height:1;color:var(--ink);
+  }
+
+  /* Kategorie + Game-Zaehler oben rechts */
+  .top-right{
+    position:absolute;right:22px;top:18px;z-index:60;pointer-events:none;
+    display:flex;align-items:center;gap:12px;
+  }
+  .category-pill{
+    position:relative;overflow:hidden;
+    font-family:'Bebas Neue',sans-serif;font-size:19px;letter-spacing:2.5px;
+    color:#fff;padding:11px 26px;border-radius:999px;
+    background:linear-gradient(160deg, #d94a5a, #a4202f);
+    border:1px solid rgba(255,255,255,.22);
+    box-shadow:0 6px 22px -8px rgba(0,0,0,.85), 0 0 26px -4px rgba(217,74,90,.75);
+    animation:catGlow 2.8s ease-in-out infinite;
+    transition:opacity .35s ease, transform .35s cubic-bezier(.2,.8,.2,1);
+    white-space:nowrap;
+  }
+  @keyframes catGlow{
+    0%,100%{box-shadow:0 6px 22px -8px rgba(0,0,0,.85), 0 0 26px -4px rgba(217,74,90,.75);}
+    50%{box-shadow:0 6px 22px -8px rgba(0,0,0,.85), 0 0 40px -2px rgba(217,74,90,1);}
+  }
+  .category-pill::after{
+    content:"";position:absolute;top:0;left:-60%;width:45%;height:100%;
+    background:linear-gradient(100deg, transparent, rgba(255,255,255,.35), transparent);
+    animation:catShine 3.6s ease-in-out infinite;
+  }
+  @keyframes catShine{
+    0%,72%{left:-60%;} 100%{left:120%;}
+  }
+  .category-pill.leer{
+    background:rgba(14,18,26,.82);border-color:rgba(255,255,255,.12);
+    color:var(--muted);animation:none;box-shadow:0 6px 20px -8px rgba(0,0,0,.8);
+  }
+  .category-pill.leer::after{display:none;}
+  .game-pill{
+    font-family:'Bebas Neue',sans-serif;font-size:17px;letter-spacing:2px;color:var(--ink);
+    padding:11px 20px;border-radius:999px;white-space:nowrap;
+    background:linear-gradient(160deg, #4a3d8f, #2a2159);
+    border:1px solid rgba(255,255,255,.2);
+    box-shadow:0 6px 22px -8px rgba(0,0,0,.85), 0 0 20px -6px rgba(120,90,240,.7);
+  }
+
+  @media (max-width:900px){
+    .round-badge{left:64px;top:10px;padding:6px 13px;}
+    .round-badge .num{font-size:16px;}
+    .top-right{right:12px;top:10px;gap:7px;}
+    .category-pill{font-size:14px;padding:8px 16px;letter-spacing:1.5px;}
+    .game-pill{font-size:13px;padding:8px 13px;}
+  }
+
+  .title{
+    font-family:'Bebas Neue',sans-serif;font-size:34px;letter-spacing:5px;
+    background:linear-gradient(180deg,#fffdf6 0%, var(--ink) 60%, var(--gold) 140%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    margin:0;
+  }
+  .category-wrap{height:26px;margin-top:2px;position:relative;overflow:hidden;}
+  .category-name{
+    position:absolute;left:0;right:0;top:0;
+    color:var(--gold);font-weight:700;font-size:15px;letter-spacing:.5px;
+    font-family:'Space Mono',monospace;
+    transition:opacity .35s ease, transform .35s cubic-bezier(.2,.8,.2,1);
+  }
+
+  .ruler{flex-shrink:0;padding:18px 60px 8px;z-index:40;pointer-events:none;}
+  .ruler-labels{display:flex;justify-content:space-between;font-family:'Bebas Neue',sans-serif;
+    font-size:15px;letter-spacing:2px;color:var(--muted);margin-bottom:6px;}
+  .ruler-labels .lo{color:var(--crimson);}
+  .ruler-labels .hi{color:var(--mint);}
+  .ruler-line{position:relative;height:2px;background:var(--ink);opacity:.85;border-radius:2px;}
+  .ruler-ticks{display:flex;justify-content:space-between;margin-top:6px;}
+  .ruler-ticks span{
+    font-family:'Space Mono',monospace;font-size:12px;color:var(--muted);
+    display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;
+  }
+  .ruler-ticks span::before{content:"";width:2px;height:6px;background:var(--gold);opacity:.6;}
+
+  .canvas{position:relative;flex:1;min-height:0;}
+
+  /* ===== Wechsel-Overlay ===== */
+  #katWechsel{
+    position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;
+    background:rgba(4,7,15,.82);backdrop-filter:blur(8px);
+    opacity:0;pointer-events:none;transition:opacity .4s ease;
+  }
+  #katWechsel.show{opacity:1;animation:kwBg .35s ease;}
+  @keyframes kwBg{from{backdrop-filter:blur(0)}to{backdrop-filter:blur(8px)}}
+  #katWechsel .kw-inner{text-align:center;transform:scale(.8);opacity:0;}
+  #katWechsel.show .kw-inner{animation:kwIn .6s cubic-bezier(.2,.9,.2,1) forwards;}
+  @keyframes kwIn{0%{transform:scale(.75) translateY(20px);opacity:0}
+                  60%{transform:scale(1.05) translateY(0);opacity:1}
+                  100%{transform:scale(1) translateY(0);opacity:1}}
+  #katWechsel .kw-label{
+    font-size:22px;letter-spacing:8px;color:#ff3b5c;font-weight:800;margin-bottom:14px;
+    text-transform:uppercase;text-shadow:0 0 24px rgba(255,59,92,.6);
+  }
+  #katWechsel .kw-name{
+    font-family:'Anton',sans-serif;font-size:clamp(48px,8vw,110px);color:#fff;line-height:1;
+    text-shadow:0 0 40px rgba(255,59,92,.7),0 6px 30px rgba(0,0,0,.6);
+    letter-spacing:2px;
+  }
+
+  /* ===== Podest / Endstand ===== */
+  #podest{
+    position:fixed;inset:0;z-index:210;display:flex;align-items:center;justify-content:center;
+    background:rgba(4,7,15,.88);backdrop-filter:blur(10px);
+    opacity:0;pointer-events:none;transition:opacity .45s ease;
+  }
+  #podest.show{opacity:1;pointer-events:auto;}
+  #podest .pd-inner{
+    background:linear-gradient(165deg,rgba(30,20,55,.96),rgba(16,12,34,.98));
+    border:1px solid rgba(168,85,247,.45);border-radius:26px;padding:38px 46px;
+    box-shadow:0 40px 120px -30px rgba(120,40,200,.7);min-width:min(560px,92vw);
+    transform:translateY(24px) scale(.94);opacity:0;
+  }
+  #podest.show .pd-inner{animation:pdIn .5s cubic-bezier(.2,.9,.2,1) forwards;}
+  @keyframes pdIn{to{transform:translateY(0) scale(1);opacity:1}}
+  #podest .pd-titel{
+    font-family:'Anton',sans-serif;font-size:38px;text-align:center;margin-bottom:24px;
+    color:#ffd166;text-shadow:0 0 30px rgba(255,209,102,.5);letter-spacing:1px;
+  }
+  #podest .pd-liste{display:flex;flex-direction:column;gap:10px;}
+  #podest .pd-row{
+    display:flex;align-items:center;gap:16px;padding:12px 18px;border-radius:14px;
+    background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);
+  }
+  #podest .pd-row.sieger{
+    background:linear-gradient(100deg,rgba(255,209,102,.16),rgba(255,209,102,.04));
+    border-color:rgba(255,209,102,.5);box-shadow:0 0 30px -8px rgba(255,209,102,.4);
+  }
+  #podest .pd-platz{font-family:'Anton',sans-serif;font-size:26px;color:var(--muted);min-width:34px;}
+  #podest .pd-row.sieger .pd-platz{color:#ffd166;}
+  #podest .pd-row img,#podest .pd-kein{width:52px;height:52px;border-radius:50%;object-fit:cover;flex-shrink:0;}
+  #podest .pd-kein{background:#2a1f4d;display:flex;align-items:center;justify-content:center;
+                   font-family:'Anton',sans-serif;font-size:22px;color:#fff;}
+  #podest .pd-name{flex:1;font-size:22px;font-weight:700;}
+  #podest .pd-leben{font-size:20px;color:#ff3b5c;letter-spacing:2px;}
+
+  /* ===== Timer-Ring ===== */
+  .timer-ring{
+    position:absolute;right:38px;bottom:60px;width:130px;height:130px;z-index:30;
+    filter:drop-shadow(0 0 22px var(--tr-glow, rgba(0,200,255,.5)));
+    transition:filter .5s ease;
+  }
+  .timer-ring svg{width:100%;height:100%;transform:rotate(0deg);}
+  .timer-ring .tr-track{
+    fill:none;stroke:rgba(255,255,255,.08);stroke-width:8;
+  }
+  .timer-ring .tr-prog{
+    fill:none;stroke:var(--tr-color,#22d3ee);stroke-width:8;stroke-linecap:round;
+    stroke-dasharray:326.7;stroke-dashoffset:0;
+    transition:stroke-dashoffset .95s linear, stroke .6s ease;
+  }
+  .timer-ring .tr-label{
+    position:absolute;inset:0;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;pointer-events:none;
+  }
+  .timer-ring .tr-num{
+    font-family:'Anton',sans-serif;font-size:34px;line-height:1;
+    color:var(--tr-color,#22d3ee);transition:color .6s ease;
+  }
+  .timer-ring .tr-sec{
+    font-size:11px;letter-spacing:3px;color:rgba(255,255,255,.45);font-weight:800;margin-top:2px;
+  }
+  .timer-ring.danger{animation:trPulse .7s ease-in-out infinite;}
+  @keyframes trPulse{0%,100%{transform:scale(1);}50%{transform:scale(1.07);}}
+  @media (max-width:900px){
+    .timer-ring{width:96px;height:96px;right:16px;bottom:20px;}
+    .timer-ring .tr-num{font-size:26px;}
+  }
+
+  .pcard{
+    position:absolute;width:104px;height:140px;border-radius:11px;
+    background:linear-gradient(160deg, var(--panel-2), var(--panel));
+    border:1px solid var(--border);overflow:hidden;cursor:grab;
+    box-shadow:0 12px 26px -14px rgba(0,0,0,.7), 0 0 0 1px rgba(255,255,255,.02) inset;
+    display:flex;flex-direction:column;justify-content:flex-end;
+    opacity:0;transform:translateY(26px) scale(.92);
+    animation:cardIn .5s cubic-bezier(.2,.8,.2,1) forwards;
+    animation-delay:calc(var(--i, 0) * 45ms);
+    transition:box-shadow .2s ease, border-color .2s ease, transform .18s cubic-bezier(.2,.8,.2,1);
+  }
+  .pcard:hover{border-color:var(--gold);}
+  .pcard.dragging{
+    cursor:grabbing;border-color:var(--gold);z-index:100;
+    box-shadow:0 26px 46px -16px rgba(0,0,0,.8), 0 0 0 2px var(--gold-glow);
+    transform:scale(1.06) rotate(-1.2deg);
+    transition:none;
+  }
+  @keyframes cardIn{
+    from{opacity:0;transform:translateY(26px) scale(.92);}
+    to{opacity:1;transform:translateY(0) scale(1);}
+  }
+  .pcard img{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;pointer-events:none;}
+  .pcard .shade{
+    position:absolute;inset:0;background:linear-gradient(180deg, transparent 45%, rgba(11,14,20,.92) 100%);
+    pointer-events:none;
+  }
+  .pcard .fallback{
+    position:absolute;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;
+    background:var(--panel-2);color:var(--muted);font-size:11px;text-align:center;padding:8px;
+  }
+  .pcard .lbl{
+    position:relative;z-index:2;width:100%;color:var(--ink);
+    font-size:10.5px;font-weight:800;text-align:center;padding:6px 5px;pointer-events:none;
+    letter-spacing:.1px;line-height:1.25;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .pcard{animation-duration:.01ms !important;}
+    *{transition-duration:.01ms !important;}
+  }
+
+/* KLAPSEN — premium format thumbnail at the top-center */
+.ka-top-logo{
+  position:fixed; left:50%; top:0; transform:translateX(-50%);
+  width:auto; height:auto; max-width:min(420px, calc(100vw - 24px));
+  max-height:clamp(100px, 16.7vh, 180px);
+  object-fit:contain; object-position:center top;
+  z-index:9999; pointer-events:none; user-select:none;
+  filter:drop-shadow(0 10px 24px rgba(0,0,0,.55));
+}
+:root{ --ka-logo-space:calc(clamp(100px, 16.7vh, 180px) + 18px); }
+@media (max-width:900px){
+  .ka-top-logo{max-width:min(300px, calc(100vw - 18px)); max-height:clamp(88px, 15vh, 120px);}
+  :root{ --ka-logo-space:calc(clamp(88px, 15vh, 120px) + 14px); }
+}
+@media (max-width:560px){
+  .ka-top-logo{max-width:260px;}
+}
+
+.stage{padding-top:var(--ka-logo-space) !important;}
+.header .title{display:none !important;}
+</style>
+<link rel="stylesheet" href="../responsive.css" />
+<link rel="stylesheet" href="../hintergrund-host.css" />
+<style>:root{ --akzent-rgb: 217,164,65; --akzent2-rgb: 80,190,110; }</style>
+<link rel="stylesheet" href="../show-camera.css">
+\n<style>\n/* v48 OBS: Timer rechts oben statt hinter der Kamera-Leiste. */\nbody.ka-stream .timer-ring{position:fixed!important;right:28px!important;top:132px!important;bottom:auto!important;z-index:12000!important}\nbody.ka-stream .stage{padding-bottom:23vh!important}\n</style>\n</head>
+<body class="host">
+<div class="stage" id="stage">
+  <img class="ka-top-logo" src="./host-logo.png" alt="" aria-hidden="true">
+  <div class="lives-strip" id="livesStrip"></div>
+
+  <div class="round-badge">
+    <span class="lbl">Round</span>
+    <span class="num" id="roundNum">1</span>
+  </div>
+
+  <div class="top-right">
+    <div class="category-pill leer" id="categoryName">Warte auf Kategorie&hellip;</div>
+    <div class="game-pill" id="gamePill">GAME 1 / 4</div>
+  </div>
+
+  <div class="header">
+    <div class="title">HIGHER OR LOWER</div>
+  </div>
+
+  <div class="ruler" id="ruler">
+    <div class="ruler-labels"><span class="lo">NIEDRIGSTE</span><span class="hi">HÖCHSTE</span></div>
+    <div class="ruler-line"></div>
+    <div class="ruler-ticks" id="rulerTicks"></div>
+  </div>
+
+  <div class="canvas" id="canvas"></div>
+
+  <!-- Timer-Ring (Schmobin-Style): faellt von blau ueber gelb nach rot -->
+  <div class="timer-ring" id="timerRing" style="display:none;">
+    <svg viewBox="0 0 120 120">
+      <circle class="tr-track" cx="60" cy="60" r="52"></circle>
+      <circle class="tr-prog" id="trProg" cx="60" cy="60" r="52"
+              transform="rotate(-90 60 60)"></circle>
+    </svg>
+    <div class="tr-label"><span class="tr-num" id="trNum">0</span><span class="tr-sec">SEC</span></div>
+  </div>
+</div>
+
+<script>
+const sb = window.KA_SB;
+let players = [];
+let turnName = null;
+let category = null;
+
+/* ===== Timer-Ring ===== */
+const TR_UMFANG = 2 * Math.PI * 52;  // Umfang r=52
+let timerRAF = null;
+let timerEnde = null;      // Zeitstempel (ms) wann der Timer ablaeuft
+let timerLen = 30;         // Gesamtdauer in Sekunden (fuer den Ring-Anteil)
+
+function timerFarbe(rest, gesamt){
+  const anteil = gesamt > 0 ? rest / gesamt : 0;
+  if(anteil > 0.5)  return { c:'#22d3ee', g:'rgba(34,211,238,.55)' };   // blau/cyan
+  if(anteil > 0.25) return { c:'#facc15', g:'rgba(250,204,21,.6)'  };   // gelb
+  return                   { c:'#ef4444', g:'rgba(239,68,68,.7)'   };   // rot
+}
+
+function zeichneTimer(){
+  const ring = document.getElementById('timerRing');
+  const prog = document.getElementById('trProg');
+  const num  = document.getElementById('trNum');
+  if(!ring || !prog || !num) return;
+
+  if(!timerEnde){
+    ring.style.display = 'none';
+    if(timerRAF){ cancelAnimationFrame(timerRAF); timerRAF = null; }
+    return;
+  }
+
+  ring.style.display = 'block';
+  const jetzt = KA_NOW();
+  let rest = Math.max(0, (timerEnde - jetzt) / 1000);
+  const restGanz = Math.ceil(rest);
+
+  const anteil = Math.max(0, Math.min(1, rest / timerLen));
+  prog.style.strokeDashoffset = String(TR_UMFANG * (1 - anteil));
+
+  const f = timerFarbe(rest, timerLen);
+  ring.style.setProperty('--tr-color', f.c);
+  ring.style.setProperty('--tr-glow', f.g);
+  num.textContent = String(restGanz);
+
+  // Pulsieren wenn <= 5 Sekunden
+  ring.classList.toggle('danger', rest <= 5 && rest > 0);
+
+  if(rest <= 0){
+    timerEnde = null;
+    num.textContent = '0';
+    if(timerRAF){ cancelAnimationFrame(timerRAF); timerRAF = null; }
+    return;
+  }
+  timerRAF = requestAnimationFrame(zeichneTimer);
+}
+
+// Timer-Zustand aus dem State uebernehmen
+function timerAusState(s){
+  if(s && s.timerEnde){
+    timerEnde = s.timerEnde;
+    timerLen = s.timerLen || 30;
+    if(!timerRAF) zeichneTimer();
+  } else {
+    timerEnde = null;
+    zeichneTimer();
+  }
+}
+let poolItems = [];
+let kartenPos = {};
+let prevLives = {};
+
+function heartSvg(cls){
+  return `<svg class="heart-ic ${cls}" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 21s-6.72-4.35-9.35-8.42C1.02 9.92 1.94 6.5 4.87 5.06 7 4.02 9.5 4.64 12 7c2.5-2.36 5-2.98 7.13-1.94 2.93 1.44 3.85 4.86 2.2 7.52C18.72 16.65 12 21 12 21Z"/>
+  </svg>`;
+}
+
+function anwenden(s){
+  s = s || {};
+  players = s.players || [];
+  turnName = s.turnName || null;
+  renderLives();
+
+  // Spielzaehler oben rechts: kommt jetzt aus dem State statt
+  // fest verdrahtet dazustehen.
+  const spiel   = s.spiel || 0;
+  const gesamt  = s.spieleGesamt || 4;
+  const gp = document.getElementById('gamePill');
+  if(gp) gp.textContent = spiel > 0
+    ? 'GAME ' + Math.min(spiel, gesamt) + ' / ' + gesamt
+    : 'GAME – / ' + gesamt;
+  const rn = document.getElementById('roundNum');
+  if(rn) rn.textContent = spiel > 0 ? String(spiel) : '–';
+  const neueKat = s.category || null;
+  if(neueKat && (!category || neueKat.name !== category.name)){
+    // Kategorie-WECHSEL: alte Karten smooth ausblenden, dann neue rein.
+    const alterName = category ? category.name : null;
+    category = neueKat;
+    poolItems = s.poolItems || [];
+    kartenPos = s.kartenPos || {};
+    if(alterName){
+      wechsleKategorie();      // mit Fade-Übergang
+    } else {
+      spawnCards();            // erster Aufbau: direkt
+    }
+  } else if(!neueKat && category){
+    category = null; poolItems = []; kartenPos = {}; spawnCards();
+  } else if(neueKat && category && neueKat.name === category.name){
+    category = neueKat;
+    // Kategorie gleich - nur Positionen haben sich geaendert (jemand
+    // hat verschoben). Live auf die sichtbaren Karten anwenden.
+    if(s.kartenPos) wendePositionenAn(s.kartenPos);
+  }
+
+  timerAusState(s);   // Timer-Ring aktualisieren
+  wechselOverlayAusState(s);
+  podestAusState(s);
+}
+
+/* ===== Wechsel-Overlay: grosser Kategorie-Name "NÄCHSTE: XY" ===== */
+let letzteWechselTs = 0;
+function wechselOverlayAusState(s){
+  if(!s || !s.wechselAnzeige) return;
+  const w = s.wechselAnzeige;
+  if(!w.ts || w.ts <= letzteWechselTs) return;
+  letzteWechselTs = w.ts;
+  zeigeWechselOverlay(w.name);
+}
+
+function zeigeWechselOverlay(name){
+  let ov = document.getElementById('katWechsel');
+  if(!ov){
+    ov = document.createElement('div');
+    ov.id = 'katWechsel';
+    ov.innerHTML = '<div class="kw-inner"><div class="kw-label">NÄCHSTE KATEGORIE</div><div class="kw-name"></div></div>';
+    document.body.appendChild(ov);
+  }
+  ov.querySelector('.kw-name').textContent = name;
+  ov.classList.remove('show'); void ov.offsetWidth;   // Reflow -> Animation neu
+  ov.classList.add('show');
+  clearTimeout(ov._t);
+  ov._t = setTimeout(()=>{ ov.classList.remove('show'); }, 2600);
+}
+
+/* ===== Podest / Endstand am Kategorie-Ende ===== */
+let letztePodest = '';
+function podestAusState(s){
+  if(!s) return;
+  if(s.kategorieFertig){
+    const key = (s.gewinner||'') + '|' + (s.spiel||0);
+    if(key !== letztePodest){
+      letztePodest = key;
+      zeigePodest(s);
+    }
+  } else {
+    letztePodest = '';
+    const p = document.getElementById('podest');
+    if(p) p.classList.remove('show');
+  }
+}
+
+function zeigePodest(s){
+  let p = document.getElementById('podest');
+  if(!p){
+    p = document.createElement('div');
+    p.id = 'podest';
+    document.body.appendChild(p);
+  }
+  // Spieler nach Leben sortieren (Gewinner oben)
+  const spieler = (s.players||[]).slice().sort((a,b)=> (b.lives||0)-(a.lives||0));
+  const gew = s.gewinner;
+  const zeilen = spieler.map((pl,i)=>{
+    const platz = i+1;
+    const istGew = pl.name === gew;
+    const av = (typeof avatarFor==='function') ? avatarFor(pl.name) : null;
+    const bild = av ? `<img src="${av}" alt="">` : `<div class="pd-kein">${(pl.name||'?').charAt(0).toUpperCase()}</div>`;
+    return `<div class="pd-row ${istGew?'sieger':''}">
+      <span class="pd-platz">${platz}</span>
+      ${bild}
+      <span class="pd-name">${pl.name}</span>
+      <span class="pd-leben">${'♥'.repeat(Math.max(0,pl.lives))||'—'}</span>
+    </div>`;
+  }).join('');
+  p.innerHTML = `<div class="pd-inner">
+    <div class="pd-titel">${gew ? gew + ' gewinnt!' : 'Kategorie beendet'}</div>
+    <div class="pd-liste">${zeilen}</div>
+  </div>`;
+  p.classList.remove('show'); void p.offsetWidth;
+  p.classList.add('show');
+}
+
+// Smoother Übergang von einer Kategorie zur naechsten:
+// altes Board faded raus & runter, dann neue Kategorie faded rein.
+function wechsleKategorie(){
+  const canvas = document.getElementById('canvas');
+  const pill = document.getElementById('categoryName');
+  if(!canvas){ spawnCards(); return; }
+
+  // Alte Karten ausblenden
+  canvas.querySelectorAll('.pcard').forEach((el, i)=>{
+    el.style.transition = 'opacity .35s ease, transform .4s cubic-bezier(.4,0,.6,1)';
+    el.style.transitionDelay = (i * 18) + 'ms';
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(24px) scale(.9)';
+  });
+  // Kategorie-Pill kurz "flippen"
+  if(pill){
+    pill.style.transition = 'opacity .25s ease, transform .25s ease';
+    pill.style.opacity = '0';
+    pill.style.transform = 'translateY(-8px)';
+  }
+
+  const wartezeit = Math.min(120 + poolItems.length * 18, 500);
+  setTimeout(()=>{
+    spawnCards();               // neue Karten aufbauen (starten unsichtbar)
+    // neue Karten reinfaden
+    canvas.querySelectorAll('.pcard').forEach((el, i)=>{
+      el.style.opacity = '0';
+      el.style.transform = 'translateY(-20px) scale(.94)';
+      requestAnimationFrame(()=>{
+        el.style.transition = 'opacity .4s ease, transform .5s cubic-bezier(.2,.8,.2,1)';
+        el.style.transitionDelay = (i * 30) + 'ms';
+        el.style.opacity = '1';
+        el.style.transform = 'translateY(0) scale(1)';
+      });
+    });
+    if(pill){
+      pill.style.opacity = '1';
+      pill.style.transform = 'translateY(0)';
+    }
+  }, wartezeit);
+}
+
+async function ladeState(){
+  const { data } = await sb.from('hl_state').select('state').eq('id',1).single();
+  anwenden(data?.state);
+}
+ladeState();
+
+sb.channel('hl_state_channel_host')
+  .on('postgres_changes', { event:'*', schema:'public', table:'hl_state' }, payload=>{
+    anwenden(payload.new.state);
+  }).subscribe();
+
+// Spieler-Karten ruhig verwalten - Avatare werden nur beim ersten
+// Anlegen geladen. Der bisherige Flash-Effekt blieb erhalten, feuert
+// aber nur noch, wenn sich wirklich etwas geaendert hat (nicht bei
+// jedem Realtime-Tick).
+const livesListe = KernRender.liste(document.getElementById('livesStrip'), {
+  schluessel: p => p.name,
+  erstellen: p => {
+    const avatarUrl = avatarFor(p.name);
+    const initial = p.name ? p.name.charAt(0).toUpperCase() : '?';
+    const el = document.createElement('div');
+    el.style.position = 'relative';
+    el.innerHTML = `
+      <span class="ka-badge-tr" style="display:none;"></span>
+      ${avatarUrl ? `<img class="avatar-pic" src="${avatarUrl}">` : `<div class="avatar-pic avatar-fallback">${initial}</div>`}
+      <div class="name"></div><div class="hearts"></div>`;
+    return el;
+  },
+  aktualisieren: (el, p) => {
+    const crit = p.lives === 1;
+    const dran = (p.name === turnName && p.lives > 0);
+    el.className = `player ${p.lives<=0?'dead':''} ${dran?'ka-live-green':''} ${crit?'crit':''}`;
+    KernRender.textWennGeaendert(el.querySelector('.name'), p.name);
+    const badge = el.querySelector('.ka-badge-tr');
+    badge.style.display = dran ? '' : 'none';
+    if(dran && !badge.innerHTML) badge.innerHTML = KA.star();
+    const heartsEl = el.querySelector('.hearts');
+    if(heartsEl.dataset.leben !== String(p.lives)){
+      heartsEl.innerHTML = Array.from({length:3}, (_, i)=>{
+        const filled = i < p.lives;
+        return heartSvg(filled ? `full${crit && i === p.lives-1 ? ' crit' : ''}` : 'empty');
+      }).join('');
+      heartsEl.dataset.leben = String(p.lives);
+    }
+  }
+});
+
+function renderLives(){
+  let geaendert = false;
+  players.forEach(p=>{
+    const prev = prevLives[p.name];
+    if(prev !== undefined && prev !== p.lives) geaendert = true;
+    if(prev !== undefined && p.lives < prev && window.HOSTFX){
+      HOSTFX.lifeLost(p.name, avatarFor(p.name));
+    }
+    prevLives[p.name] = p.lives;
+  });
+
+  livesListe.render(players);
+
+  if(geaendert){
+    const strip = document.getElementById('livesStrip');
+    strip.classList.add('flash');
+    setTimeout(()=>strip.classList.remove('flash'), 260);
+  }
+}
+
+function updateCategoryName(){
+  const el = document.getElementById('categoryName');
+  el.style.opacity = 0;
+  el.style.transform = 'translateY(6px)';
+  setTimeout(()=>{
+    el.textContent = category ? category.name : 'Warte auf Kategorie\u2026';
+    el.classList.toggle('leer', !category);
+    el.style.opacity = 1;
+    el.style.transform = 'translateY(0)';
+  }, 180);
+}
+
+function renderRulerTicks(){
+  const ticksEl = document.getElementById('rulerTicks');
+  const count = poolItems.length || 10;
+  ticksEl.innerHTML = Array.from({length:count},(_, i)=>`<span>${i+1}</span>`).join('');
+}
+
+function spawnCards(){
+  const canvas = document.getElementById('canvas');
+  canvas.innerHTML = '';
+  updateCategoryName();
+  renderRulerTicks();
+  if(!category) return;
+
+  const cardW = 104, cardH = 140, gapX = 10, gapY = 10, margin = 20;
+  const canvasW = canvas.clientWidth || window.innerWidth;
+  const canvasH = canvas.clientHeight || window.innerHeight;
+
+  const perRow = Math.max(1, Math.floor((canvasW - margin * 2 + gapX) / (cardW + gapX)));
+  const rowCount = Math.ceil(poolItems.length / perRow);
+
+  poolItems.forEach((item, i)=>{
+    const row = Math.floor(i / perRow);
+    const col = i % perRow;
+    const itemsInThisRow = Math.min(perRow, poolItems.length - row * perRow);
+    const rowWidth = itemsInThisRow * cardW + (itemsInThisRow - 1) * gapX;
+    const rowStartX = (canvasW - rowWidth) / 2;
+
+    let y = margin + row * (cardH + gapY);
+    let x = rowStartX + col * (cardW + gapX);
+
+    const el = document.createElement('div');
+    el.className = 'pcard';
+    el.dataset.idx = i;
+    el.style.setProperty('--i', i);
+
+    // Gespeicherte Position (in Prozent) anwenden, falls vorhanden -
+    // so sehen alle Geraete dieselbe Anordnung.
+    const gespeichert = (kartenPos && kartenPos[i]) ? kartenPos[i] : null;
+    if(gespeichert){
+      el.style.left = (gespeichert.xp * canvasW) + 'px';
+      el.style.top  = (gespeichert.yp * canvasH) + 'px';
+    } else {
+      el.style.left = Math.max(0, x) + 'px';
+      el.style.top = Math.min(y, canvasH - margin - cardH) + 'px';
+    }
+    el.innerHTML = `
+      <img src="${item.url}" onerror="this.style.display='none'; this.nextElementSibling.style.display='none'; this.parentElement.querySelector('.fallback').style.display='flex';">
+      <div class="shade"></div>
+      <div class="fallback" style="display:none;">${item.label}</div>
+      <div class="lbl">${item.label}</div>
+    `;
+    canvas.appendChild(el);
+    makeDraggable(el, canvas);
+  });
+}
+
+// Positionen aller Karten (in Prozent der Canvas-Groesse). Wird aus dem
+// State gefuellt und beim Verschieben zurueckgeschrieben.
+// (Deklaration steht oben bei poolItems.)
+
+// Wendet Positionen aus dem State auf bereits sichtbare Karten an,
+// ohne neu zu spawnen (fuer Live-Sync waehrend andere verschieben).
+function wendePositionenAn(pos){
+  if(!pos) return;
+  kartenPos = pos;
+  const canvas = document.getElementById('canvas');
+  if(!canvas) return;
+  const cw = canvas.clientWidth || window.innerWidth;
+  const ch = canvas.clientHeight || window.innerHeight;
+  canvas.querySelectorAll('.pcard').forEach(el=>{
+    const i = el.dataset.idx;
+    const p = pos[i];
+    if(p){
+      el.style.left = (p.xp * cw) + 'px';
+      el.style.top  = (p.yp * ch) + 'px';
+    }
+  });
+}
+
+// Schreibt die aktuelle Position einer Karte in den State (nur Host/SL,
+// nicht Zuschauer).
+async function speicherePosition(el, canvas){
+  const cw = canvas.clientWidth || window.innerWidth;
+  const ch = canvas.clientHeight || window.innerHeight;
+  const i = el.dataset.idx;
+  kartenPos[i] = {
+    xp: parseFloat(el.style.left) / cw,
+    yp: parseFloat(el.style.top) / ch
+  };
+  try {
+    const pos = kartenPos[i];
+    const { error } = await sb.rpc('hl_set_card_position', {
+      p_index: String(i),
+      p_xp: Number(pos?.xp || 0),
+      p_yp: Number(pos?.yp || 0)
+    });
+    if(error) console.warn('hl pos speichern:', error);
+  } catch(e){ console.warn('hl pos speichern:', e); }
+}
+
+// Im Turnier landen Zuschauer auf dieser Seite, weil es keinen
+// Buzzer gibt. Sie sollen zusehen, aber nichts verschieben -
+// das Sortieren bleibt beim Spielleiter.
+const NUR_ZUSCHAUEN = new URLSearchParams(location.search).get('nur') === 'zuschauen';
+
+function makeDraggable(el, canvas){
+  if(NUR_ZUSCHAUEN){ el.style.cursor = 'default'; return; }
+  let offsetX = 0, offsetY = 0, dragging = false;
+  el.addEventListener('mousedown', (e)=>{
+    dragging = true;
+    el.classList.add('dragging');
+    const rect = el.getBoundingClientRect();
+    offsetX = e.clientX - rect.left;
+    offsetY = e.clientY - rect.top;
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', (e)=>{
+    if(!dragging) return;
+    const canvasRect = canvas.getBoundingClientRect();
+    let x = e.clientX - canvasRect.left - offsetX;
+    let y = e.clientY - canvasRect.top - offsetY;
+    x = Math.max(0, Math.min(canvasRect.width - el.offsetWidth, x));
+    y = Math.max(0, Math.min(canvasRect.height - el.offsetHeight, y));
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
+  });
+  document.addEventListener('mouseup', ()=>{
+    if(dragging){
+      dragging = false;
+      el.classList.remove('dragging');
+      // Neue Position fuer alle sichtbar machen
+      speicherePosition(el, canvas);
+    }
+  });
+}
+</script>
+<script src="../zurueck.js"></script>
+<script src="../camera-config.js"></script>
+<script src="../stream-mode.js?v=48"></script>
+<script src="../show-camera.js?v=48"></script>
+<script src="../host-fx.js"></script>
+
+<script>
+// Turnier: Rolle merken und auf Formatwechsel horchen.
+// Schaltet der Spielleiter weiter, springt dieses Geraet mit.
+if(window.TURNIER){
+  TURNIER.setzeRolle('host');
+  TURNIER.starte(typeof sb !== "undefined" ? sb : null);
+}
+</script>
+<script>
+(function(){
+})();
+</script>
+<script src="../active-stream-mode.js?v=48"></script>
+</body>
+</html>

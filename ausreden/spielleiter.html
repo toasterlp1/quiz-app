@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>Ausredenkönig — Spielleiter</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../live.js"></script>
+<script src="../eingabeschutz.js"></script>
+<script src="../public-client.js"></script>
+
+<script src="../kern-korrektur.js"></script>
+<script src="../spieler-verwaltung.js"></script>
+
+<script src="situationen.js"></script>
+
+<style>
+  :root{
+    --bg:#07100c; --panel:#0d2318; --panel-border:#1c4030;
+    --ink:#eefaf2; --muted:#87b39c; --accent:#3ddc84; --gold:#ffc23d;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-serif;padding:26px 16px 80px;}
+  .wrap{max-width:760px;margin:0 auto;}
+  h1{font-family:'Anton',sans-serif;font-size:36px;text-transform:uppercase;letter-spacing:1px;margin:0 0 20px;}
+  h1 span{color:var(--accent);}
+  .box{background:var(--panel);border:1px solid var(--panel-border);border-radius:14px;padding:20px;margin-bottom:16px;}
+  label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-weight:800;margin-bottom:8px;}
+  input, textarea{
+    width:100%;background:#081a12;border:1px solid var(--panel-border);border-radius:10px;
+    color:var(--ink);padding:12px;font-family:'Inter',sans-serif;font-size:15px;margin-bottom:14px;outline:none;
+  }
+  input:focus, textarea:focus{border-color:var(--accent);}
+  button{
+    background:var(--accent);border:none;color:#04140b;font-weight:800;
+    padding:13px 20px;border-radius:10px;cursor:pointer;font-size:13px;
+    text-transform:uppercase;letter-spacing:1px;font-family:'Inter',sans-serif;
+  }
+  button.sek{background:transparent;border:1px solid var(--panel-border);color:var(--muted);}
+  button:disabled{opacity:.35;cursor:not-allowed;}
+  .reihe{display:flex;gap:10px;flex-wrap:wrap;}
+  .status{font-size:14px;color:var(--muted);margin-bottom:10px;}
+  .phase{display:inline-block;background:var(--accent);color:#04140b;padding:4px 12px;border-radius:6px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;}
+  .eintrag{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--panel-border);font-size:14px;}
+  .eintrag:last-child{border:none;}
+  .eintrag .wer{color:var(--accent);font-weight:800;flex-shrink:0;}
+  .sieg{color:var(--gold);font-weight:800;}
+</style>
+<link rel="stylesheet" href="../responsive.css" />
+<link rel="stylesheet" href="../kern-korrektur.css" />
+</head>
+<body>
+
+<div class="wrap">
+  <h1>Ausreden<span>könig</span></h1>
+
+  <div class="box">
+    <label>Situation</label>
+    <textarea id="situation" rows="2" placeholder="Du kommst um 4 Uhr morgens nach Hause. Deine Mutter steht in der Küche."></textarea>
+    <div class="reihe">
+      <button id="btnNeu">Runde starten</button>
+      <button class="sek" id="btnZufall">Zufallssituation</button>
+    </div>
+  </div>
+
+  <div class="box">
+    <div class="status">
+      Phase: <span class="phase" id="phase">—</span>
+      <span id="zaehler" style="margin-left:10px;"></span>
+    </div>
+    <div class="reihe">
+      <button id="btnAbstimmen">Zur Abstimmung</button>
+      <button id="btnAufloesen">Auflösen</button>
+      <button class="sek" id="btnPunkte">Punkte vergeben</button>
+    </div>
+  </div>
+
+  <div class="box">
+    <label>Abgegebene Ausreden</label>
+    <div id="liste"><div class="status">Noch keine Runde.</div></div>
+  </div>
+
+  <div class="box" style="margin-top:20px;">
+    <label>Neustart</label>
+    <div class="reihe">
+      <button class="sek" id="btnReset" style="border-color:#e11d48;color:#fb7185;">Spielstand komplett zurücksetzen</button>
+    </div>
+    <div style="font-size:13px;color:var(--muted,#8891a8);margin-top:8px;">
+      Löscht alle bisherigen Runden und die Gesamtpunkte für Ausredenkönig. Andere Formate sind davon nicht betroffen.
+    </div>
+  </div>
+
+  <div class="box">
+    <label>Spieler</label>
+    <div id="spielerVerwaltungSlot"></div>
+  </div>
+
+  <div class="box">
+    <label>Manuelle Korrektur</label>
+    <div id="korrekturPanel"></div>
+  </div>
+</div>
+
+<script>
+const sb = window.KA_SB;
+window.addEventListener('ka-crew-ready', () => { try { crewAktualisieren().then(() => lade()); } catch(e) {} });
+let runde = null;
+
+const esc = s => String(s == null ? '' : s)
+  .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+// Ersetzt die feste crew.js-Liste - synchron gecacht, da crew()
+// an mehreren Stellen direkt (ohne await) aufgerufen wird.
+let crewCache = [];
+async function crewAktualisieren(){
+  const { data } = await sb.from('public_players').select('name').eq('format','ausreden').eq('active',true).order('name', { ascending:true });
+  crewCache = (data || []).map(r => r.name);
+}
+crewAktualisieren();
+setInterval(crewAktualisieren, 1500);
+const crew = () => crewCache;
+
+SpielerVerwaltung.einbauen({
+  container: document.getElementById('spielerVerwaltungSlot'),
+  sb: sb, format: 'ausreden'
+});
+
+// Freier Eingriff: schreibt einen manuellen Korrektur-Eintrag in
+// dieselbe 'ergebnisse'-Tabelle, aus der auch die normale
+// Punktevergabe kommt - fliesst automatisch korrekt in die
+// Gesamtsumme auf der Host-Seite ein.
+KernKorrektur.einbauen({
+  container: document.getElementById('korrekturPanel'),
+  spieler: () => crew(),
+  aufPunkteAendern: async (name, delta) => {
+    await sb.from('ergebnisse').insert({ format: 'ausreden', spieler: name, punkte: delta });
+  }
+});
+let autoLaeuft = false;
+
+document.getElementById('btnZufall').onclick = () => {
+  const s = window.SITUATIONEN || [];
+  if(!s.length) return;
+  document.getElementById('situation').value = s[Math.floor(Math.random() * s.length)];
+};
+
+document.getElementById('btnNeu').onclick = async () => {
+  const sit = document.getElementById('situation').value.trim();
+  if(!sit) return;
+  await sb.from('ausreden_runden').insert({ situation:sit, phase:'schreiben' });
+  document.getElementById('situation').value = '';
+  lade();
+};
+
+document.getElementById('btnAbstimmen').onclick = async () => {
+  if(!runde) return;
+  await sb.rpc('round_phase_transition',{p_game:'ausreden',p_round_id:String(runde.id),p_expected:'schreiben',p_next:'abstimmen'});
+  lade();
+};
+
+document.getElementById('btnAufloesen').onclick = async () => {
+  if(!runde) return;
+  const {data:ok}=await sb.rpc('round_phase_transition',{p_game:'ausreden',p_round_id:String(runde.id),p_expected:'abstimmen',p_next:'aufloesung'});
+  if(!ok) return;
+  if(window.arZaehler){
+    window.arZaehler.gespielt = (window.arZaehler.gespielt||0) + 1;
+    localStorage.setItem('ar_gespielt', String(window.arZaehler.gespielt));
+    if(window.RUNDEN) await RUNDEN.rundeFertig();
+  }
+  lade();
+};
+
+let ausredenWertungBusy = false;
+document.getElementById('btnPunkte').onclick = async () => {
+  if(!runde || ausredenWertungBusy || runde.phase === 'ende') return;
+  ausredenWertungBusy = true;
+  const btn = document.getElementById('btnPunkte');
+  btn.disabled = true;
+
+  const {data:finalData,error:finalError}=await sb.rpc('ausreden_finalize_round',{p_round_id:String(runde.id)});
+  if(finalError){console.error(finalError);btn.disabled=false;ausredenWertungBusy=false;return;}
+  if(!finalData?.accepted){btn.disabled=false;ausredenWertungBusy=false;await lade();return;}
+
+  runde.phase = 'ende';
+  btn.disabled = false;
+  ausredenWertungBusy = false;
+  btn.textContent = 'Punkte vergeben ✓';
+  setTimeout(() => { btn.textContent = 'Punkte vergeben'; }, 2000);
+};
+
+async function lade(){
+  if(!sb) return;
+  const r = await sb.from('ausreden_runden')
+    .select('*').order('erstellt', { ascending:false }).limit(1).maybeSingle();
+  runde = r.data;
+
+  const phaseEl = document.getElementById('phase');
+  const listeEl = document.getElementById('liste');
+  const zaehlEl = document.getElementById('zaehler');
+
+  if(!runde){
+    phaseEl.textContent = '—';
+    zaehlEl.textContent = '';
+    listeEl.innerHTML = '<div class="status">Noch keine Runde.</div>';
+    return;
+  }
+
+  phaseEl.textContent = runde.phase;
+
+  const ar = await sb.from('ausreden_texte').select('spieler,text').eq('runde_id', runde.id);
+  const st = await sb.from('ausreden_stimmen').select('spieler,gewaehlt').eq('runde_id', runde.id);
+  const ausreden = ar.data || [];
+  const stimmen = st.data || [];
+
+  const gesamt = crew().length;
+  if(runde.phase === 'schreiben') zaehlEl.textContent = ausreden.length + ' / ' + gesamt + ' abgegeben';
+  else if(runde.phase === 'abstimmen') zaehlEl.textContent = stimmen.length + ' / ' + gesamt + ' gestimmt';
+  else zaehlEl.textContent = '';
+
+  // Sind alle durch, geht die Runde von selbst weiter.
+  // Die Knoepfe bleiben, falls jemand aussetzt oder du frueher willst.
+  if(gesamt && !autoLaeuft){
+    const alleGeschrieben = runde.phase === 'schreiben' && ausreden.length >= gesamt;
+    const alleGestimmt    = runde.phase === 'abstimmen' && stimmen.length  >= gesamt;
+    if(alleGeschrieben || alleGestimmt){
+      autoLaeuft = true;
+      const ziel = alleGeschrieben ? 'abstimmen' : 'aufloesung';
+      const von  = runde.phase;
+      setTimeout(async () => {
+        autoLaeuft = false;
+        // Zwischenzeitliche Aenderungen respektieren
+        const r2 = await sb.from('ausreden_runden')
+          .select('phase').eq('id', runde.id).maybeSingle();
+        if(r2.data && r2.data.phase === von){
+          await sb.rpc('round_phase_transition',{p_game:'ausreden',p_round_id:String(runde.id),p_expected:von,p_next:ziel});
+          lade();
+        }
+      }, 1500);
+    }
+  }
+
+  const zaehlung = {};
+  stimmen.forEach(s => {
+    const k = String(s.gewaehlt).toLowerCase();
+    zaehlung[k] = (zaehlung[k] || 0) + 1;
+  });
+  let max = 0;
+  Object.values(zaehlung).forEach(v => { if(v > max) max = v; });
+
+  listeEl.innerHTML = ausreden.length
+    ? ausreden.map(a => {
+        const n = zaehlung[a.text.toLowerCase()] || 0;
+        const ist = (max > 0 && n === max);
+        return '<div class="eintrag">' +
+          '<span><span class="wer">' + esc(a.spieler) + '</span> ' + esc(a.text) + '</span>' +
+          '<span class="' + (ist ? 'sieg' : '') + '">' + n + '</span>' +
+        '</div>';
+      }).join('')
+    : '<div class="status">Noch nichts abgegeben.</div>';
+}
+
+if(sb){
+  lade();
+// Realtime mit Selbstheilung: bricht die Verbindung ab (Handy sperrt,
+// WLAN wechselt), wird neu verbunden und der verpasste Stand geholt.
+// Solange Realtime steht, laeuft nur ein sehr langsames Sicherheitsnetz
+// statt des frueheren Dauer-Pollings im Sekundentakt.
+if(window.KA_LIVE){
+  KA_LIVE.start({
+    client: sb,
+    tabelle: 'ausreden_runden',
+    laden: async function(){ await lade(); }
+  });
+} else {
+  setInterval(lade, 2000);
+}
+}
+</script>
+<script src="../zurueck.js"></script>
+
+<script>
+// Rundenzaehler: Ausreden legt jede Runde als eigene Zeile an,
+// deshalb zaehlen wir hier lokal mit.
+window.arZaehler = {
+  gespielt: parseInt(localStorage.getItem('ar_gespielt')||'0',10),
+  rundenZiel: parseInt(localStorage.getItem('ar_ziel')||'10',10),
+  rundenFertig: false
+};
+
+// Kompletter Neustart: alte Runden (Ausreden/Stimmen kaskadieren mit)
+// und die Gesamtpunkte fuer dieses Format loeschen.
+document.getElementById('btnReset').onclick = async () => {
+  if(!confirm('Spielstand wirklich komplett zurücksetzen?\nAlle bisherigen Runden und die Gesamtpunkte für Ausredenkönig werden gelöscht.')) return;
+  const btn = document.getElementById('btnReset');
+  btn.disabled = true; btn.textContent = 'Setze zurück…';
+  await sb.from('ausreden_runden').delete().neq('id', 0);
+  await sb.from('ergebnisse').delete().eq('format', 'ausreden');
+  window.arZaehler ? (window.arZaehler.gespielt = 0) : null;
+  localStorage.setItem('ar_gespielt', '0');
+  btn.textContent = 'Zurückgesetzt ✓';
+  setTimeout(() => { btn.textContent = 'Spielstand komplett zurücksetzen'; btn.disabled = false; }, 2000);
+};
+
+if(window.RUNDEN) RUNDEN.init({
+  key: 'ar',
+  state: function(){ return window.arZaehler; },
+  speichern: async function(s){
+    window.arZaehler = s;
+    localStorage.setItem('ar_gespielt', String(s.gespielt||0));
+    localStorage.setItem('ar_ziel', String(s.rundenZiel||10));
+  },
+  zaehler: function(s){ return s.gespielt || 0; },
+  reset: function(s){ s.gespielt = 0; },
+  standard: 10
+});
+</script>
+
+<script>
+// Turnier: Rolle merken und auf Formatwechsel horchen.
+// Schaltet der Spielleiter weiter, springt dieses Geraet mit.
+if(window.TURNIER){
+  TURNIER.setzeRolle('sl');
+  TURNIER.starte(typeof sb !== "undefined" ? sb : null);
+}
+</script>
+<script src="../active-stream-mode.js?v=48"></script>
+</body>
+</html>

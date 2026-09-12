@@ -1,0 +1,532 @@
+<!doctype html>
+<html class="host" lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>Morph — Host</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@500;700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../live.js"></script>
+<script src="../public-client.js"></script>
+<script src="../server-time.js?v=48"></script>
+
+<script src="./morphs.js"></script>
+<script src="../crew.js"></script>
+<script src="../kern-render.js"></script>
+<script src="../kern-turn.js?v=48"></script>
+
+<script src="../symbole.js"></script>
+<style>
+  /* Handy-Skalierung: Bezugsgroesse wechselt hochkant auf die Hoehe */
+  :root{ --u: 1vw; }
+  @media (max-width:900px) and (orientation:portrait){
+    :root{ --u: 0.62vh; }
+    html.host, body.host{ height:auto; min-height:100%; overflow-y:auto; overflow-x:hidden; }
+  }
+  @media (max-width:900px) and (orientation:portrait) and (min-aspect-ratio:3/5){
+    :root{ --u: 0.72vh; }
+  }
+  @media (max-height:520px) and (orientation:landscape){
+    :root{ --u: 1.35vh; }
+  }
+
+  .avatar-pic{width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0;}
+  :root{
+    --bg:#0a0e1a; --panel:#12172a; --panel-border:#232b45;
+    --ink:#eef1f8; --muted:#6b7488; --accent:#c44dff; --accent2:#ff4d9d; --warn:#ffd166; --bad:#ff3860; --good:#3ddc84;
+    --ease:cubic-bezier(.22,.9,.32,1);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:transparent;width:calc(100 * var(--u));height:100vh;overflow:hidden;font-family:'Inter',sans-serif;}
+  .stage{
+    position:relative;width:calc(100 * var(--u));height:100vh;
+    background:radial-gradient(ellipse at 50% 10%, #1a1030 0%, var(--bg) 68%);
+    display:flex;flex-direction:column;align-items:center;padding:30px 20px;
+  }
+
+  /* Logo oben links */
+  .header{
+    position:absolute;left:max(calc(2 * var(--u)), 76px);top:22px;z-index:60;
+    display:flex;flex-direction:column;align-items:flex-start;margin-bottom:0;
+  }
+  .logo-morph{position:relative;display:inline-block;}
+  .logo-arc{
+    position:absolute;left:-6px;right:-6px;top:-26px;height:34px;
+    pointer-events:none;
+  }
+  .title{
+    font-family:'Anton',sans-serif;font-size:calc(4.2 * var(--u));letter-spacing:2px;
+    color:#fff;text-shadow:0 3px 0 rgba(0,0,0,.55), 0 0 26px rgba(255,255,255,.25);
+    line-height:1;
+  }
+  .title-rule{display:none;}
+
+  /* Runden-Zaehler oben rechts */
+  .round-counter{
+    position:absolute;right:calc(2 * var(--u));top:22px;z-index:60;
+    background:#0d1220;border:1px solid rgba(255,255,255,.18);border-radius:16px;
+    padding:10px calc(2 * var(--u));
+    font-family:'Anton',sans-serif;font-size:calc(2.6 * var(--u));color:#fff;line-height:1;
+    box-shadow:0 8px 26px -10px rgba(0,0,0,.9);
+  }
+
+  /* Buzzer-Kreis + Buzz Order rechts */
+  .buzz-side{
+    position:absolute;right:calc(2 * var(--u));top:calc(22px + 9vh);z-index:60;
+    display:flex;flex-direction:column;align-items:center;gap:14px;width:calc(15 * var(--u));
+  }
+  .buzz-orb{
+    width:calc(7.4 * var(--u));height:calc(7.4 * var(--u));border-radius:50%;
+    background:linear-gradient(150deg,#c44dff,#ff3860);
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Anton',sans-serif;font-size:calc(1.15 * var(--u));letter-spacing:2px;color:#fff;
+    box-shadow:0 0 34px -4px rgba(255,56,96,.85), 0 0 0 2px rgba(255,255,255,.14) inset;
+    animation:orbPulse 1.9s ease-in-out infinite;
+  }
+  @keyframes orbPulse{
+    0%,100%{box-shadow:0 0 30px -6px rgba(255,56,96,.75), 0 0 0 2px rgba(255,255,255,.14) inset;}
+    50%{box-shadow:0 0 48px 0 rgba(255,56,96,1), 0 0 0 2px rgba(255,255,255,.2) inset;}
+  }
+  .buzz-order{
+    width:100%;border-radius:12px;overflow:hidden;
+    border:1px solid rgba(255,255,255,.14);
+    box-shadow:0 8px 26px -12px rgba(0,0,0,.9);
+  }
+  .buzz-order .head{
+    background:linear-gradient(90deg,#7c3aed,#ff3d84);
+    font-family:'Anton',sans-serif;font-size:calc(1.05 * var(--u));letter-spacing:1px;
+    color:#fff;padding:8px 12px;
+  }
+  .buzz-order .list{
+    background:#0d1220;min-height:calc(4 * var(--u));padding:8px 12px;
+    display:flex;flex-direction:column;gap:5px;
+  }
+  .buzz-order .list .row{
+    font-size:calc(.95 * var(--u));font-weight:700;color:var(--ink);
+    display:flex;align-items:center;gap:7px;
+  }
+  .buzz-order .list .row .idx{
+    font-family:'Anton',sans-serif;color:var(--accent2);min-width:calc(1 * var(--u));
+  }
+  .buzz-order .list .leer{font-size:calc(.85 * var(--u));color:var(--muted);}
+
+  /* ONLY 1 Banner */
+  .only-one{
+    position:absolute;right:calc(2 * var(--u));bottom:calc(18vh);z-index:60;
+    background:linear-gradient(160deg,#ff4d5e,#d81f36);
+    font-family:'Anton',sans-serif;font-size:calc(3 * var(--u));letter-spacing:2px;color:#fff;
+    padding:2vh calc(3 * var(--u));border-radius:14px;
+    box-shadow:0 0 40px -6px rgba(255,56,96,.9);
+    opacity:0;transform:scale(.9);pointer-events:none;
+    transition:opacity .35s var(--ease), transform .35s var(--ease);
+  }
+  .only-one.show{opacity:1;transform:scale(1);}
+
+  @media (max-width:900px){
+    .header{left:72px;top:12px;}
+    .title{font-size:26px;}
+    .round-counter{right:10px;top:12px;font-size:18px;padding:6px 12px;}
+    .buzz-side{position:static;width:auto;flex-direction:row;margin-top:14px;}
+    .buzz-orb{width:64px;height:64px;font-size:11px;}
+    .buzz-order{width:150px;}
+    .only-one{position:static;margin-top:12px;font-size:22px;padding:10px 18px;}
+  }
+
+  .frame-outer{
+    position:relative;width:min(56vh,600px);height:min(56vh,600px);padding:10px;
+    border-radius:26px;background:linear-gradient(160deg, #241640, #0b1120);
+    box-shadow:0 0 50px rgba(196,77,255,.16), 0 10px 30px rgba(0,0,0,.4);
+    margin-top:6vh;
+  }
+  .frame-wrap{
+    position:relative;width:100%;height:100%;border-radius:18px;overflow:hidden;
+    background:#05070d;border:3px solid #ff2033;
+    box-shadow:0 0 34px -4px rgba(255,32,51,.75), 0 0 0 1px rgba(255,255,255,.06) inset;
+  }
+  .corner{display:none;}
+
+  /* Morph-Bild: scharf gezeigt (die Verschmelzung ist das Raetsel) */
+  .morph-img{
+    position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#05070d;
+    opacity:0;transition:opacity .5s var(--ease);
+  }
+  .morph-img.show{opacity:1;}
+
+  /* Aufloesung: zwei Original-Haelften */
+  .reveal-split{position:absolute;inset:0;display:flex;z-index:3;opacity:0;pointer-events:none;transition:opacity .4s var(--ease);}
+  .reveal-split.show{opacity:1;}
+  .reveal-half{position:relative;flex:1;overflow:hidden;background:#05070d;}
+  .reveal-half img{width:100%;height:100%;object-fit:cover;}
+  /* Die noch nicht aufgedeckte Haelfte wird KOMPLETT verdeckt.
+     Vorher war sie nur weichgezeichnet - Frisur, Hautton und
+     Kleidung blieben erkennbar, damit war die zweite Person
+     faktisch schon verraten. */
+  .reveal-half.hidden-half img{visibility:hidden;}
+  .reveal-half.hidden-half{
+    background:linear-gradient(160deg,#141b30,#0a0e1a);
+  }
+  .reveal-half.hidden-half::after{
+    content:'';position:absolute;inset:0;
+    background:repeating-linear-gradient(
+      45deg, rgba(255,255,255,.03) 0 12px, transparent 12px 24px);
+  }
+  .reveal-half .tag{
+    position:absolute;left:0;right:0;bottom:0;padding:14px 10px;
+    background:linear-gradient(0deg,rgba(5,7,13,.92),transparent);
+    font-family:'Anton',sans-serif;font-size:22px;letter-spacing:1px;color:#fff;text-align:center;
+  }
+  .reveal-half .qmark{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    font-family:'Anton',sans-serif;font-size:80px;color:rgba(255,255,255,.25);
+  }
+  .split-divider{width:3px;background:linear-gradient(180deg,var(--accent),var(--accent2));box-shadow:0 0 16px var(--accent);z-index:4;}
+
+  .placeholder{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    color:var(--muted);font-family:'Anton',sans-serif;font-size:26px;letter-spacing:2px;text-align:center;
+  }
+
+  .points-bar{
+    position:relative;width:min(760px,70%);height:22px;margin:20px auto 0;
+    background:#141a2c;border:1px solid rgba(255,255,255,.12);
+    border-radius:7px;overflow:hidden;box-shadow:inset 0 2px 8px rgba(0,0,0,.5);display:none;
+  }
+  .points-bar .fill{
+    position:absolute;left:0;top:0;bottom:0;
+    background:linear-gradient(90deg,var(--accent2),var(--accent));
+    box-shadow:0 0 16px rgba(196,77,255,.6);
+  }
+  .points-bar.paused .fill{ animation:barPulse 1s ease-in-out infinite; }
+  @keyframes barPulse{ 0%,100%{opacity:1} 50%{opacity:.5} }
+  .points-bar .lbl{
+    position:absolute;inset:0;z-index:2;display:flex;align-items:center;justify-content:center;
+    font-family:'Anton',sans-serif;font-size:12px;letter-spacing:2px;color:#fff;text-shadow:0 2px 6px rgba(0,0,0,.8);
+  }
+
+  .points-badge{
+    position:absolute;top:18px;right:18px;z-index:5;
+    width:96px;height:96px;border-radius:50%;
+    background:rgba(10,14,26,.85);border:3px solid var(--warn);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    box-shadow:0 0 22px rgba(255,209,102,.45);transition:border-color .4s var(--ease), box-shadow .4s var(--ease);
+  }
+  .points-badge.low{border-color:var(--bad);box-shadow:0 0 22px rgba(255,56,96,.45);}
+  .points-badge .num{font-family:'Anton',sans-serif;font-size:44px;color:var(--ink);line-height:1;transition:color .4s var(--ease);}
+  .points-badge.low .num{color:var(--bad);}
+  .points-badge .lbl{font-size:10px;letter-spacing:2px;color:var(--muted);margin-top:2px;}
+
+  .active-buzzer{
+    margin-top:20px;height:44px;display:flex;align-items:center;justify-content:center;
+    font-family:'Anton',sans-serif;font-size:26px;letter-spacing:2px;color:var(--warn);
+    text-shadow:0 0 16px rgba(255,209,102,.5);opacity:0;transform:translateY(6px);
+    transition:opacity .3s var(--ease), transform .3s var(--ease);
+  }
+  .active-buzzer.show{opacity:1;transform:translateY(0);}
+
+  .scoreboard{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;margin-top:18px;max-width:1100px;}
+  .player-card{
+    min-width:140px;padding:12px 18px;border-radius:14px;
+    background:var(--panel);border:2px solid var(--panel-border);
+    text-align:center;transition:border-color .3s var(--ease), box-shadow .3s var(--ease), opacity .3s var(--ease);
+  }
+  .player-card.active{border-color:var(--warn);box-shadow:0 0 18px rgba(255,209,102,.4);animation:cardPulse 1.8s ease-in-out infinite;}
+  @keyframes cardPulse{0%,100%{box-shadow:0 0 14px rgba(255,209,102,.3);}50%{box-shadow:0 0 22px rgba(255,209,102,.55);}}
+  .player-card.out{opacity:.4;}
+  .player-card .name{font-size:14px;font-weight:700;color:var(--ink);letter-spacing:.4px;}
+  .player-card .score{font-family:'Anton',sans-serif;font-size:26px;color:var(--accent);margin-top:2px;}
+</style>
+<link rel="stylesheet" href="../responsive.css" />
+<link rel="stylesheet" href="../hintergrund-host.css" />
+<link rel="stylesheet" href="../kern-turn.css?v=48" />
+<style>:root{ --akzent-rgb: 196,77,255; --akzent2-rgb: 60,180,230; --kern-akzent: 196,77,255; --kern-akzent2: 60,180,230; }</style>
+<link rel="stylesheet" href="../show-camera.css">
+\n<style>\n/* v48 OBS-Safe-Area: Buzzer/Liste + Punktezeitleiste bleiben frei. */\nbody.ka-stream .buzz-side{display:flex!important;right:22px;top:150px;width:230px;z-index:12000}\nbody.ka-stream .buzz-orb{width:92px;height:92px;font-size:14px}\nbody.ka-stream #kernBuzzListeSlot{width:100%}\nbody.ka-stream .stage{padding-bottom:25vh!important}\nbody.ka-stream .points-bar{position:relative;z-index:200;margin-bottom:2vh}\nbody.ka-stream .scoreboard,body.ka-stream .active-buzzer{display:none!important}\n</style>\n</head>
+<body class="host">
+<div class="stage">
+  <div class="header">
+    <div class="logo-morph">
+      <svg class="logo-arc" viewBox="0 0 200 40" aria-hidden="true">
+        <defs>
+          <marker id="mArrow" markerWidth="7" markerHeight="7" refX="4" refY="3.5" orient="auto">
+            <path d="M0,0 L7,3.5 L0,7 Z" fill="#ff2033"/>
+          </marker>
+        </defs>
+        <path d="M14 34 C 40 4, 160 4, 186 30" fill="none" stroke="#ff2033"
+              stroke-width="7" stroke-linecap="round" marker-end="url(#mArrow)"/>
+      </svg>
+      <div class="title">MORPH</div>
+    </div>
+  </div>
+
+  <div class="round-counter" id="roundCounter">1/2</div>
+
+  <div class="buzz-side">
+    <div class="buzz-orb">BUZZER</div>
+    <div id="kernBuzzListeSlot"></div>
+  </div>
+
+  <div class="only-one" id="onlyOne">LAST CHANCE</div>
+
+  <div class="frame-outer">
+    <div class="frame-wrap" id="frameWrap">
+      <div class="placeholder" id="placeholder">Warte auf Runde…</div>
+      <img class="morph-img" id="morphImg" alt="">
+      <div class="reveal-split" id="revealSplit">
+        <div class="reveal-half" id="halfA">
+          <img id="imgA" alt=""><div class="qmark" id="qmarkA">?</div>
+          <div class="tag" id="tagA"></div>
+        </div>
+        <div class="split-divider"></div>
+        <div class="reveal-half" id="halfB">
+          <img id="imgB" alt=""><div class="qmark" id="qmarkB">?</div>
+          <div class="tag" id="tagB"></div>
+        </div>
+      </div>
+      <div class="points-badge" id="pointsBadge" style="display:none;">
+        <div class="num" id="pointsNum">5</div>
+        <div class="lbl">PUNKTE</div>
+      </div>
+    </div>
+    <div class="points-bar" id="pointsBar" style="display:none;">
+      <div class="fill" id="pointsFill"></div>
+      <div class="lbl" id="pointsBarLbl"></div>
+    </div>
+  </div>
+
+  <div class="active-buzzer" id="activeBuzzer"></div>
+  <div class="scoreboard" id="scoreboard"></div>
+</div>
+
+<script>
+const sb = window.KA_SB;
+// Punkte laufen ueber die Zeit runter (5 -> 1), Buzzer haelt die Zeit an
+const MAX_PUNKTE = 5;
+const MIN_PUNKTE = 1;
+const PUNKTE_DAUER_MS = 20000;
+
+const frameWrap = document.getElementById('frameWrap');
+const placeholder = document.getElementById('placeholder');
+const morphImg = document.getElementById('morphImg');
+const revealSplit = document.getElementById('revealSplit');
+const imgA = document.getElementById('imgA');
+const imgB = document.getElementById('imgB');
+const tagA = document.getElementById('tagA');
+const tagB = document.getElementById('tagB');
+const halfA = document.getElementById('halfA');
+const halfB = document.getElementById('halfB');
+const qmarkA = document.getElementById('qmarkA');
+const qmarkB = document.getElementById('qmarkB');
+const pointsBadge = document.getElementById('pointsBadge');
+const pointsNum = document.getElementById('pointsNum');
+const activeBuzzerEl = document.getElementById('activeBuzzer');
+const scoreboardEl = document.getElementById('scoreboard');
+
+let fxLetzterBuzzer = null;
+let fxVorherigeBuzzedOut = [];
+let fxLetzteLoesung = null;
+let currentIndex = null;
+let state = null;
+const kernBuzzListe = KernTurn.buzzListe(document.getElementById('kernBuzzListeSlot'), { titel: 'REIHENFOLGE' });
+
+// Scoreboard ruhig verwalten - Avatare werden nur beim ersten
+// Anlegen geladen, kein Neuaufbau bei jedem Realtime-Tick.
+const morphScoreboardListe = KernRender.liste(document.getElementById('scoreboard'), {
+  schluessel: p => p.name,
+  erstellen: p => {
+    const avatarUrl = avatarFor(p.name);
+    const el = document.createElement('div');
+    el.style.position = 'relative';
+    el.innerHTML = `
+      <span class="ka-badge-tr" style="display:none;"></span>
+      ${avatarUrl ? `<img class="avatar-pic" src="${avatarUrl}" style="margin-bottom:6px;">` : ''}
+      <div class="name"></div><div class="score"></div>`;
+    return el;
+  },
+  aktualisieren: (el, p) => {
+    el.className = `player-card ${p.__active?'active ka-live-green':''} ${p.__out?'out':''}`;
+    const badge = el.querySelector('.ka-badge-tr');
+    badge.style.display = p.__active ? '' : 'none';
+    if(p.__active && !badge.innerHTML) badge.innerHTML = KA.mic();
+    KernRender.textWennGeaendert(el.querySelector('.name'), p.name);
+    KernRender.textWennGeaendert(el.querySelector('.score'), p.score);
+  }
+});
+
+function currentPoints(elapsed){
+  const t = Math.max(0, Math.min(1, elapsed / PUNKTE_DAUER_MS));
+  return Math.max(MIN_PUNKTE, Math.ceil(MAX_PUNKTE - t * (MAX_PUNKTE - MIN_PUNKTE)));
+}
+function punkteAnteil(elapsed){
+  const t = Math.max(0, Math.min(1, elapsed / PUNKTE_DAUER_MS));
+  return 1 - t;
+}
+
+function render(){
+  if(window.HOSTPODEST && state) HOSTPODEST.pruefe(state);
+  if(!state) return;
+  const { players={}, morphIndex=null, revealStartedAt=null, revealStep=0, buzzQueue=[], buzzedOut=[] } = state;
+  // revealStep: 0 = nur Morph, 1 = Person A aufgedeckt, 2 = beide aufgedeckt (geloest)
+
+  const eintrag = (morphIndex!=null && MORPHS[morphIndex]) ? MORPHS[morphIndex] : null;
+
+  if(eintrag){
+    if(currentIndex !== morphIndex){
+      morphImg.src = eintrag.morph || '';
+      imgA.src = eintrag.bildA || '';
+      imgB.src = eintrag.bildB || '';
+      tagA.textContent = eintrag.nameA || '';
+      tagB.textContent = eintrag.nameB || '';
+      currentIndex = morphIndex;
+    }
+    placeholder.style.display = 'none';
+    pointsBadge.style.display = 'none';
+
+    // Morph zeigen wenn noch nicht komplett aufgeloest
+    morphImg.classList.toggle('show', revealStep < 2);
+    revealSplit.classList.toggle('show', revealStep >= 1);
+
+    // Haelfte A ab Step 1, Haelfte B ab Step 2
+    const zeigeA = revealStep >= 1;
+    const zeigeB = revealStep >= 2;
+    halfA.classList.toggle('hidden-half', !zeigeA);
+    qmarkA.style.display = zeigeA ? 'none' : 'flex';
+    tagA.style.display = zeigeA ? 'block' : 'none';
+    halfB.classList.toggle('hidden-half', !zeigeB);
+    qmarkB.style.display = zeigeB ? 'none' : 'flex';
+    tagB.style.display = zeigeB ? 'block' : 'none';
+  } else {
+    placeholder.style.display = 'flex';
+    pointsBadge.style.display = 'none';
+    morphImg.classList.remove('show');
+    revealSplit.classList.remove('show');
+    currentIndex = null;
+  }
+
+  const solved = revealStep >= 2;
+  const active = buzzQueue.find(n=>!buzzedOut.includes(n));
+
+  if(active && active !== fxLetzterBuzzer && window.HOSTFX){
+    HOSTFX.buzz(active, avatarFor(active));
+  }
+  fxLetzterBuzzer = active || null;
+
+  if(window.HOSTFX){
+    buzzedOut.filter(n => !fxVorherigeBuzzedOut.includes(n)).forEach(n => HOSTFX.wrong(n));
+  }
+  fxVorherigeBuzzedOut = buzzedOut.slice();
+
+  const loesungSchluessel = solved ? `${morphIndex}-gelöst` : null;
+  if(loesungSchluessel && loesungSchluessel !== fxLetzteLoesung && window.HOSTFX && active){
+    HOSTFX.correct(active);
+  }
+  fxLetzteLoesung = loesungSchluessel;
+
+  const datensaetze = Object.entries(players).map(([name,score]) => ({
+    name, score,
+    __active: name===active && !solved,
+    __out: buzzedOut.includes(name) && !solved
+  }));
+  morphScoreboardListe.render(datensaetze);
+
+  activeBuzzerEl.textContent = active && !solved ? active + ' ist dran!' : '';
+  activeBuzzerEl.classList.toggle('show', !!(active && !solved));
+
+  const roundEl = document.getElementById('roundCounter');
+  if(roundEl) roundEl.textContent = Math.min(Math.max(revealStep,1),2) + '/2';
+
+  kernBuzzListe.aktualisieren(buzzQueue, buzzQueue.find(n => !buzzedOut.includes(n)), buzzedOut);
+}
+
+function tick(){
+  const bar = document.getElementById('pointsBar');
+  const fill = document.getElementById('pointsFill');
+  const barLbl = document.getElementById('pointsBarLbl');
+  const solved = state && state.revealStep >= 2;
+
+  if(state && state.morphIndex!=null && state.revealStartedAt && !solved){
+    const jetzt = state.frozenAt || KA_NOW();
+    const elapsed = jetzt - state.revealStartedAt;
+    const pts = currentPoints(elapsed);
+    pointsNum.textContent = pts;
+    pointsBadge.classList.toggle('low', pts === MIN_PUNKTE);
+
+    if(bar){
+      bar.style.display = 'block';
+      const wartetAufBuzzer = (state.buzzQueue || []).some(n => !(state.buzzedOut || []).includes(n));
+      bar.classList.toggle('paused', wartetAufBuzzer);
+      fill.style.width = (punkteAnteil(elapsed) * 100) + '%';
+      barLbl.textContent = wartetAufBuzzer ? 'BUZZER — ZEIT ANGEHALTEN' : `${pts} PUNKTE`;
+    }
+
+    // ONLY 1 warnt, dass die Runde nur noch wenig wert ist.
+    // Erscheint ab 2 Punkten - vorher haing es faelschlich an
+    // der Zahl der verbliebenen Buzzer.
+    const onlyOneEl = document.getElementById('onlyOne');
+    if(onlyOneEl) onlyOneEl.classList.toggle('show', pts <= 2);
+  } else if(bar){
+    bar.style.display = 'none';
+    const onlyOneEl = document.getElementById('onlyOne');
+    if(onlyOneEl) onlyOneEl.classList.remove('show');
+  }
+  requestAnimationFrame(tick);
+}
+tick();
+
+async function loadState(){
+  const { data } = await sb.from('mo_state').select('state').eq('id',1).single();
+  state = data?.state || {};
+  render();
+}
+loadState();
+// Realtime mit Selbstheilung: bricht die Verbindung ab (Handy sperrt,
+// WLAN wechselt), wird neu verbunden und der verpasste Stand geholt.
+// Solange Realtime steht, laeuft nur ein sehr langsames Sicherheitsnetz
+// statt des frueheren Dauer-Pollings im Sekundentakt.
+if(window.KA_LIVE){
+  KA_LIVE.start({
+    client: sb,
+    tabelle: 'mo_state',
+    laden: async function(){ await loadState(); }
+  });
+} else {
+  setInterval(loadState, 2000);
+}
+</script>
+<script src="../zurueck.js"></script>
+<script>window.KA_HOST_BUZZER_CONFIG={format:'morph',game:'morph',table:'mo_state',nameKey:'mo_name',freeze:true};</script>
+<script src="../host-buzzer-player.js"></script>
+<script src="../camera-config.js"></script>
+<script src="../stream-mode.js?v=48"></script>
+<script src="../show-camera.js?v=48"></script>
+<script src="../host-fx.js"></script>
+
+<script>
+// Zeigt das Podest automatisch, sobald alle Runden gespielt sind.
+if(window.HOSTPODEST) HOSTPODEST.init({
+  punkte: function(s){
+    var p = s.players || {};
+    return Object.keys(p).map(function(n){
+      var v = p[n];
+      return { spieler: n, punkte: (typeof v === 'number') ? v : (v && v.score) || 0 };
+    });
+  }
+});
+</script>
+
+<script>
+// Turnier: Rolle merken und auf Formatwechsel horchen.
+// Schaltet der Spielleiter weiter, springt dieses Geraet mit.
+if(window.TURNIER){
+  TURNIER.setzeRolle('host');
+  TURNIER.starte(typeof sb !== "undefined" ? sb : null);
+}
+</script>
+<script>
+(function(){
+})();
+</script>
+<script src="../active-stream-mode.js?v=48"></script>
+</body>
+</html>

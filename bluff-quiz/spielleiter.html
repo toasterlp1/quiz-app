@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>Bluff-Quiz — Spielleiter</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../live.js"></script>
+<script src="../eingabeschutz.js"></script>
+<script src="../public-client.js"></script>
+
+<script src="../kern-korrektur.js"></script>
+<script src="../crew.js"></script>
+<script src="../spieler-verwaltung.js"></script>
+
+<style>
+  :root{
+    --bg:#0a0f1e; --panel:#111a30; --panel-border:#1e2a4a;
+    --ink:#eef1f8; --muted:#8b96b3; --accent:#a855f7; --good:#3ddc84;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-serif;padding:26px 16px 80px;}
+  .wrap{max-width:760px;margin:0 auto;}
+  h1{font-family:'Anton',sans-serif;font-size:36px;text-transform:uppercase;letter-spacing:1px;margin:0 0 20px;}
+  h1 span{color:var(--accent);}
+  .box{background:var(--panel);border:1px solid var(--panel-border);border-radius:14px;padding:20px;margin-bottom:16px;}
+  label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-weight:800;margin-bottom:8px;}
+  input, textarea{
+    width:100%;background:#0d1220;border:1px solid var(--panel-border);border-radius:10px;
+    color:var(--ink);padding:12px;font-family:'Inter',sans-serif;font-size:15px;margin-bottom:14px;outline:none;
+  }
+  input:focus, textarea:focus{border-color:var(--accent);}
+  button{
+    background:var(--accent);border:none;color:#fff;font-weight:800;
+    padding:13px 20px;border-radius:10px;cursor:pointer;font-size:13px;
+    text-transform:uppercase;letter-spacing:1px;font-family:'Inter',sans-serif;
+  }
+  button.sek{background:transparent;border:1px solid var(--panel-border);color:var(--muted);}
+  button:disabled{opacity:.35;cursor:not-allowed;}
+  .reihe{display:flex;gap:10px;flex-wrap:wrap;}
+  .status{font-size:14px;color:var(--muted);margin-bottom:10px;}
+  .phase{display:inline-block;background:var(--accent);color:#fff;padding:4px 12px;border-radius:6px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;}
+  .eintrag{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--panel-border);font-size:14px;}
+  .eintrag:last-child{border:none;}
+  .echt{color:var(--good);font-weight:800;}
+</style>
+<link rel="stylesheet" href="../responsive.css" />
+<link rel="stylesheet" href="../kern-korrektur.css" />
+</head>
+<body>
+
+<div class="wrap">
+  <h1>Bluff<span>-Quiz</span> Spielleiter</h1>
+
+  <div class="box">
+    <label>Spieler</label>
+    <div id="spielerVerwaltungSlot"></div>
+  </div>
+
+  <div class="box">
+    <label>Frage (mit Lücke)</label>
+    <textarea id="frage" rows="2" placeholder="In der Schweiz ist es verboten, ___."></textarea>
+    <label>Echte Antwort</label>
+    <input id="echt" placeholder="am Sonntag die Wäsche aufzuhängen">
+    <div class="reihe">
+      <button id="btnNeu">Runde starten</button>
+      <button class="sek" id="btnZufall">Zufallsfrage</button>
+    </div>
+  </div>
+
+  <div class="box" id="steuerung" style="display:none;">
+    <div class="status">Phase: <span class="phase" id="phaseAnzeige">Lügen</span></div>
+    <div class="status" id="zaehler"></div>
+    <div id="liste"></div>
+    <div class="reihe" style="margin-top:16px;">
+      <button id="btnRaten">Zum Raten</button>
+      <button id="btnAufloesen">Auflösen</button>
+      <button class="sek" id="btnEnde">Beenden &amp; werten</button>
+    </div>
+  </div>
+
+  <div class="box" style="margin-top:20px;">
+    <label>Neustart</label>
+    <div class="reihe">
+      <button class="sek" id="btnReset" style="border-color:#e11d48;color:#fb7185;">Spielstand komplett zurücksetzen</button>
+    </div>
+    <div style="font-size:13px;color:var(--muted,#8891a8);margin-top:8px;">
+      Löscht alle bisherigen Runden und die Gesamtpunkte für Bluff-Quiz. Andere Formate sind davon nicht betroffen.
+    </div>
+  </div>
+
+  <div class="box">
+    <label>Manuelle Korrektur</label>
+    <div id="korrekturPanel"></div>
+  </div>
+</div>
+
+<script src="fragen.js"></script>
+
+<script>
+const sb = window.KA_SB;
+const $ = id => document.getElementById(id);
+
+SpielerVerwaltung.einbauen({
+  container: document.getElementById('spielerVerwaltungSlot'),
+  sb,
+  format: 'bluff-quiz'
+});
+
+window.addEventListener('ka-crew-ready', () => {
+  aktualisiere();
+});
+
+// Freier Eingriff: manueller Korrektur-Eintrag in derselben
+// 'ergebnisse'-Tabelle wie die normale Punktevergabe.
+KernKorrektur.einbauen({
+  container: document.getElementById('korrekturPanel'),
+  spieler: () => crewNames(),
+  aufPunkteAendern: async (name, delta) => {
+    await sb.from('ergebnisse').insert({ format: 'bluff-quiz', spieler: name, punkte: delta });
+  }
+});
+
+let rundeId = null;
+let phase = 'luegen';
+
+$('btnZufall').addEventListener('click', () => {
+  if(typeof BLUFF_FRAGEN === 'undefined' || !BLUFF_FRAGEN.length) return;
+  const f = BLUFF_FRAGEN[Math.floor(Math.random() * BLUFF_FRAGEN.length)];
+  $('frage').value = f.frage;
+  $('echt').value = f.antwort;
+});
+
+$('btnNeu').addEventListener('click', async () => {
+  const frage = $('frage').value.trim();
+  const echt = $('echt').value.trim();
+  if(!frage || !echt) return;
+  const { data, error } = await sb.from('bluff_runden')
+    .insert({ frage:frage, echte_antwort:echt, phase:'luegen', aufgedeckt:false })
+    .select().single();
+  if(error){ alert(error.message); return; }
+  rundeId = data.id;
+  phase = 'luegen';
+  $('steuerung').style.display = 'block';
+  abonniere();
+  aktualisiere();
+});
+
+$('btnRaten').addEventListener('click', async () => {
+  const {data:ok}=await sb.rpc('round_phase_transition',{p_game:'bluff-quiz',p_round_id:String(rundeId),p_expected:'luegen',p_next:'raten'});
+  if(!ok) return; phase = 'raten';
+  aktualisiere();
+});
+
+$('btnAufloesen').addEventListener('click', async () => {
+  const {data:ok}=await sb.rpc('round_phase_transition',{p_game:'bluff-quiz',p_round_id:String(rundeId),p_expected:'raten',p_next:'aufloesung'});
+  if(!ok) return; phase = 'aufloesung';
+  aktualisiere();
+});
+
+let bluffWertungBusy = false;
+$('btnEnde').addEventListener('click', async () => {
+  if(bluffWertungBusy || phase !== 'aufloesung') return;
+  bluffWertungBusy = true;
+  $('btnEnde').disabled = true;
+  const {data:finalData,error:finalError}=await sb.rpc('bluff_finalize_round',{p_round_id:String(rundeId)});
+  if(finalError){ alert(finalError.message); bluffWertungBusy=false; $('btnEnde').disabled=false; return; }
+  if(!finalData?.accepted){ bluffWertungBusy=false; $('btnEnde').disabled=false; await aktualisiere(); return; }
+  const liste=finalData.results||[];
+
+  window.bqZaehler.gespielt = (window.bqZaehler.gespielt || 0) + 1;
+  localStorage.setItem('bq_gespielt', String(window.bqZaehler.gespielt));
+  if(window.RUNDEN) await RUNDEN.rundeFertig();
+  phase = 'ende';
+  aktualisiere();
+
+  const text = liste.slice().sort((a,b) => b.punkte - a.punkte)
+    .map(e => e.spieler + ': ' + e.punkte).join('\n');
+  alert('Gewertet:\n' + text);
+  bluffWertungBusy = false;
+  $('btnEnde').disabled = false;
+});
+
+function abonniere(){
+  sb.channel('bluff-sl-' + rundeId)
+    .on('postgres_changes', { event:'*', schema:'public', table:'bluff_runden', filter:'id=eq.' + rundeId }, payload=>{ if(payload.new?.phase) phase=payload.new.phase; aktualisiere(); })
+    .on('postgres_changes', { event:'*', schema:'public', table:'bluff_luegen', filter:'runde_id=eq.' + rundeId }, aktualisiere)
+    .on('postgres_changes', { event:'*', schema:'public', table:'bluff_stimmen', filter:'runde_id=eq.' + rundeId }, aktualisiere)
+    .subscribe();
+}
+
+let autoWechselLaeuft = false;
+
+async function aktualisiere(){
+  if(rundeId!=null){ const rr=await sb.from('bluff_runden').select('phase').eq('id',rundeId).maybeSingle(); if(rr.data?.phase) phase=rr.data.phase; }
+  const NAMEN = { luegen:'Lügen', raten:'Raten', aufloesung:'Auflösung', ende:'Beendet' };
+  $('phaseAnzeige').textContent = NAMEN[phase] || phase;
+
+  const lg = await sb.from('bluff_luegen').select('spieler,text').eq('runde_id', rundeId);
+  const st = await sb.from('bluff_stimmen').select('spieler,gewaehlt,ist_echt').eq('runde_id', rundeId);
+  const luegen = lg.data || [];
+  const stimmen = st.data || [];
+
+  // Wie viele sind ueberhaupt dabei? Aus crew.js, wie beim Host.
+  const crewGroesse = crewNames().length;
+
+  if(phase === 'luegen'){
+    const rest = crewGroesse ? Math.max(0, crewGroesse - luegen.length) : null;
+    $('zaehler').textContent = luegen.length + ' Lügen abgegeben' +
+      (rest !== null ? (rest > 0 ? ' — noch ' + rest + ' offen' : ' — alle da') : '');
+    $('liste').innerHTML = luegen.map(l =>
+      '<div class="eintrag"><span>' + l.spieler + '</span><span>' + l.text + '</span></div>'
+    ).join('');
+
+    // Sind alle durch, geht es von selbst weiter. Der Knopf bleibt
+    // trotzdem da, falls jemand aussetzt oder du frueher willst.
+    if(crewGroesse && luegen.length >= crewGroesse && !autoWechselLaeuft){
+      autoWechselLaeuft = true;
+      setTimeout(async () => {
+        autoWechselLaeuft = false;
+        // Nochmal pruefen - in der Zwischenzeit kann sich was geaendert haben
+        const p2 = await sb.from('bluff_runden').select('phase').eq('id', rundeId).single();
+        if(p2.data && p2.data.phase === 'luegen'){
+          const {data:ok}=await sb.rpc('round_phase_transition',{p_game:'bluff-quiz',p_round_id:String(rundeId),p_expected:'luegen',p_next:'raten'});
+          if(ok) phase='raten';
+          aktualisiere();
+        }
+      }, 1500);
+    }
+  } else {
+    const rest = crewGroesse ? Math.max(0, crewGroesse - stimmen.length) : null;
+    $('zaehler').textContent = stimmen.length + ' Stimmen abgegeben' +
+      (rest !== null ? (rest > 0 ? ' — noch ' + rest + ' offen' : ' — alle da') : '');
+    $('liste').innerHTML = stimmen.map(s =>
+      '<div class="eintrag"><span>' + s.spieler + '</span><span class="' + (s.ist_echt ? 'echt' : '') + '">' +
+      s.gewaehlt + (s.ist_echt ? ' (echt)' : '') + '</span></div>'
+    ).join('');
+
+    if(phase === 'raten' && crewGroesse && stimmen.length >= crewGroesse && !autoWechselLaeuft){
+      autoWechselLaeuft = true;
+      setTimeout(async () => {
+        autoWechselLaeuft = false;
+        const p2 = await sb.from('bluff_runden').select('phase').eq('id', rundeId).single();
+        if(p2.data && p2.data.phase === 'raten'){
+          const {data:ok}=await sb.rpc('round_phase_transition',{p_game:'bluff-quiz',p_round_id:String(rundeId),p_expected:'raten',p_next:'aufloesung'});
+          if(ok) phase='aufloesung';
+          aktualisiere();
+        }
+      }, 1500);
+    }
+  }
+}
+
+if(!sb) alert('Nicht eingeloggt. Seite neu laden.');
+</script>
+
+<script src="../zurueck.js"></script>
+<script src="../hintergrund.js"></script>
+<script>
+// Rundenzaehler: Bluff-Quiz legt jede Runde als eigene Zeile an,
+// deshalb zaehlen wir hier lokal mit.
+window.bqZaehler = {
+  gespielt: parseInt(localStorage.getItem('bq_gespielt')||'0',10),
+  rundenZiel: parseInt(localStorage.getItem('bq_ziel')||'10',10),
+  rundenFertig: false
+};
+
+// Kompletter Neustart: alte Runden (Lügen/Stimmen kaskadieren mit)
+// und die Gesamtpunkte fuer dieses Format loeschen. Andere Formate
+// nutzen die 'ergebnisse'-Tabelle auch, deshalb NUR nach format
+// gefiltert loeschen, nicht die ganze Tabelle leeren.
+document.getElementById('btnReset').onclick = async () => {
+  if(!confirm('Spielstand wirklich komplett zurücksetzen?\nAlle bisherigen Runden und die Gesamtpunkte für Bluff-Quiz werden gelöscht.')) return;
+  const btn = document.getElementById('btnReset');
+  btn.disabled = true; btn.textContent = 'Setze zurück…';
+  await sb.from('bluff_runden').delete().neq('id', 0);
+  await sb.from('ergebnisse').delete().eq('format', 'bluff-quiz');
+  window.bqZaehler.gespielt = 0;
+  localStorage.setItem('bq_gespielt', '0');
+  btn.textContent = 'Zurückgesetzt ✓';
+  setTimeout(() => { btn.textContent = 'Spielstand komplett zurücksetzen'; btn.disabled = false; }, 2000);
+};
+
+if(window.RUNDEN) RUNDEN.init({
+  key: 'bq',
+  state: function(){ return window.bqZaehler; },
+  speichern: async function(s){
+    window.bqZaehler = s;
+    localStorage.setItem('bq_gespielt', String(s.gespielt||0));
+    localStorage.setItem('bq_ziel', String(s.rundenZiel||10));
+  },
+  zaehler: function(s){ return s.gespielt || 0; },
+  reset: function(s){ s.gespielt = 0; },
+  standard: 10
+});
+</script>
+
+
+<script>
+// Turnier: Rolle merken und auf Formatwechsel horchen.
+// Schaltet der Spielleiter weiter, springt dieses Geraet mit.
+if(window.TURNIER){
+  TURNIER.setzeRolle('sl');
+  TURNIER.starte(typeof sb !== "undefined" ? sb : null);
+}
+</script>
+<script src="../active-stream-mode.js?v=48"></script>
+</body>
+</html>

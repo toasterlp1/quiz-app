@@ -1,0 +1,461 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>Hotzone — Buzzer</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@500;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../live.js"></script>
+<script src="../eingabeschutz.js"></script>
+<script src="../public-client.js"></script>
+<script src="../crew.js"></script>
+
+<script src="./categories.js"></script>
+<style>
+  :root{
+    --bg:#0a0e1a; --bg2:#0d1524; --panel:#12172a; --panel2:#161f38; --border:#232b45;
+    --ink:#eef1f8; --muted:#7a86a3;
+    --cold:#3a7bff; --warm:#ffd166; --hot:#ff3860; --accent:#00e5c7;
+    --blue:#3a7bff; --red:#ff3860;
+    --ease:cubic-bezier(.22,.9,.32,1); --ease-out:cubic-bezier(.16,1,.3,1);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;}
+  body{
+    background:
+      radial-gradient(ellipse 70vw 50vh at 15% -10%, rgba(58,123,255,.16), transparent 60%),
+      radial-gradient(ellipse 70vw 50vh at 90% 110%, rgba(255,56,96,.14), transparent 60%),
+      var(--bg);
+    color:var(--ink);font-family:'Inter',sans-serif;
+    display:flex;align-items:center;justify-content:center;padding:20px;
+    min-height:100%;overflow-x:hidden;
+  }
+  .wrap{width:100%;max-width:440px;text-align:center;position:relative;z-index:1;}
+
+  h1.brand{
+    font-family:'Anton',sans-serif;font-size:34px;letter-spacing:5px;line-height:1;margin-bottom:6px;
+    background:linear-gradient(180deg,#eaf2ff 0%, var(--accent) 45%, var(--hot) 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    filter:drop-shadow(0 0 16px rgba(0,229,199,.35));
+  }
+  .brand-rule{
+    width:100px;height:4px;border-radius:3px;margin:0 auto 24px;
+    background:linear-gradient(90deg, var(--cold), var(--warm), var(--hot));
+    box-shadow:0 0 14px rgba(255,56,96,.4);position:relative;overflow:hidden;
+  }
+  .brand-rule::after{content:'';position:absolute;top:0;left:-40%;width:40%;height:100%;
+    background:linear-gradient(90deg,transparent,rgba(255,255,255,.7),transparent);animation:sweep 2.8s var(--ease) infinite;}
+  @keyframes sweep{0%{left:-40%;}100%{left:120%;}}
+
+  #greeting{font-family:'Anton',sans-serif;letter-spacing:2px;font-size:22px;margin-bottom:18px;color:var(--ink);}
+
+  select{
+    width:100%;background:var(--panel);border:1px solid var(--border);color:var(--ink);
+    padding:15px;border-radius:12px;font-size:16px;margin-bottom:12px;text-align:center;
+    font-weight:700;
+  }
+  button.join{
+    width:100%;padding:15px;border:none;border-radius:12px;
+    background:linear-gradient(135deg, var(--accent), #00b89f);
+    color:#04120f;font-weight:900;font-size:16px;cursor:pointer;letter-spacing:.5px;
+    box-shadow:0 6px 20px -6px rgba(0,229,199,.5);transition:transform .12s var(--ease);
+  }
+  button.join:active{transform:scale(.97);}
+
+  .status{margin:16px 0;font-size:14.5px;color:var(--muted);line-height:1.6;
+    background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:16px;
+    animation:riseIn .45s var(--ease-out) both;}
+  .status b{color:var(--ink);}
+  .teamblue{color:var(--blue);font-weight:800;}
+  .teamred{color:var(--red);font-weight:800;}
+
+  @keyframes riseIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+
+  .cat-box{
+    background:linear-gradient(165deg,var(--panel2),var(--panel));
+    border:2px solid var(--border);border-radius:18px;padding:20px 18px;margin-bottom:16px;
+    animation:riseIn .45s var(--ease-out) both;
+  }
+  .cat-name{font-size:11.5px;letter-spacing:2.5px;color:var(--muted);text-transform:uppercase;font-weight:800;margin-bottom:10px;}
+  .cat-ends{display:flex;justify-content:space-between;font-weight:900;font-size:13.5px;text-transform:uppercase;letter-spacing:.5px;}
+  .cat-ends .cold{color:var(--cold);}
+  .cat-ends .hot{color:var(--hot);}
+  .cat-rail{
+    height:6px;border-radius:4px;margin:10px 2px 4px;
+    background:linear-gradient(90deg, var(--cold), var(--warm), var(--hot));
+    box-shadow:0 0 14px rgba(255,56,96,.3), inset 0 1px 0 rgba(255,255,255,.15);
+  }
+  .target-num{
+    font-family:'Anton',sans-serif;font-size:64px;line-height:1;color:var(--warm);margin:16px 0 4px;
+    text-shadow:0 0 30px rgba(255,209,102,.6);
+    animation:numPop .5s var(--ease-out);
+  }
+  @keyframes numPop{0%{transform:scale(.5);opacity:0;}60%{transform:scale(1.12);}100%{transform:scale(1);opacity:1;}}
+
+  .hint-word{
+    font-family:'Anton',sans-serif;font-size:30px;color:#fff;margin:12px 0 2px;
+    text-shadow:0 0 24px rgba(255,255,255,.25);
+    animation:numPop .5s var(--ease-out);
+  }
+
+  input[type=text]{
+    width:100%;background:var(--panel);border:1px solid var(--border);color:var(--ink);
+    padding:15px;border-radius:12px;font-size:16px;margin-bottom:12px;text-align:center;font-weight:600;
+  }
+  input[type=text]:focus{outline:none;border-color:var(--accent);}
+
+  /* ---------- JOKER ---------- */
+  .jokers{display:flex;gap:8px;justify-content:center;margin:18px 0 6px;}
+  .joker{
+    position:relative;flex:1;max-width:118px;height:52px;
+    display:flex;align-items:center;justify-content:center;
+    background:none;border:none;padding:0;cursor:pointer;
+    clip-path:polygon(13% 0%, 87% 0%, 100% 50%, 87% 100%, 13% 100%, 0% 50%);
+    transition:transform .12s ease, filter .2s;
+  }
+  .joker::before{content:'';position:absolute;inset:0;background:var(--jc);
+    clip-path:polygon(13% 0%, 87% 0%, 100% 50%, 87% 100%, 13% 100%, 0% 50%);}
+  .joker::after{content:'';position:absolute;inset:2px;background:var(--bg2);
+    clip-path:polygon(13% 0%, 87% 0%, 100% 50%, 87% 100%, 13% 100%, 0% 50%);}
+  .joker .lbl{position:relative;z-index:2;font-family:'Anton',sans-serif;
+    font-size:12px;letter-spacing:.8px;color:#eef1f8;text-align:center;line-height:1.15;}
+  .joker[data-j="double"]{--jc:#c44dff;}
+  .joker[data-j="reroll"]{--jc:#3a7bff;}
+  .joker[data-j="grey"]{--jc:#ffd166;}
+  .joker:not(:disabled):active{transform:scale(.95);}
+  .joker:not(:disabled){filter:drop-shadow(0 0 8px var(--jc));}
+  .joker:not(:disabled):hover{filter:drop-shadow(0 0 16px var(--jc)) brightness(1.25);}
+  .joker:disabled{cursor:default;filter:grayscale(1) brightness(.45);}
+  .jokerhint{text-align:center;font-size:11.5px;color:var(--muted);
+    min-height:15px;letter-spacing:.3px;margin-bottom:10px;}
+  .jokerhint b{color:var(--ink);}
+
+  button.submit{
+    width:100%;padding:15px;border:none;border-radius:12px;
+    background:linear-gradient(135deg, var(--warm), #ffb238);
+    color:#231600;font-weight:900;font-size:15.5px;cursor:pointer;letter-spacing:.3px;
+    box-shadow:0 6px 20px -6px rgba(255,209,102,.5);transition:transform .12s var(--ease), opacity .15s;
+  }
+  button.submit:active{transform:scale(.97);}
+  button.submit:disabled{background:var(--panel);color:var(--muted);box-shadow:none;cursor:not-allowed;}
+
+  .scale{display:grid;grid-template-columns:repeat(5,1fr);gap:9px;margin:16px 0;}
+  .scale button{
+    padding:0;height:52px;border-radius:12px;border:2px solid var(--border);
+    color:#fff;font-weight:900;font-size:17px;cursor:pointer;font-family:'Anton',sans-serif;
+    transition:border-color .2s var(--ease), transform .12s var(--ease), box-shadow .2s var(--ease);
+    background:var(--num-bg,#0d1220);
+  }
+  .scale button:active{transform:scale(.94);}
+  .scale button.selected{border-color:#fff;box-shadow:0 0 0 2px var(--num-bg), 0 0 20px -2px var(--num-bg);transform:scale(1.05);}
+  .scale button:disabled{opacity:.2;cursor:not-allowed;filter:grayscale(1);}
+</style>
+<link rel="stylesheet" href="../responsive.css" />
+<link rel="stylesheet" href="../show-camera.css">
+</head>
+<body>
+<div class="wrap" id="joinView">
+  <h1 class="brand">HOTZONE</h1>
+  <div class="brand-rule"></div>
+  <input id="nameSelect" type="text" maxlength="32" autocomplete="nickname" placeholder="Dein Name" aria-label="Dein Name">
+  <button class="join" id="joinBtn">Beitreten</button>
+</div>
+
+<div class="wrap" id="gameView" style="display:none;">
+  <h1 class="brand">HOTZONE</h1>
+  <div class="brand-rule"></div>
+  <div id="greeting"></div>
+  <div id="content"></div>
+</div>
+
+<script>
+// Den Client aus public-client.js mitbenutzen, damit Realtime die Login-Session kennt.
+// Ohne das kommen nach dem RLS-Umbau keine Live-Updates mehr an.
+const sb = window.KA_SB;
+let myName = sessionStorage.getItem('hz_name') || '';
+let state = { players:{}, phase:'idle', activeTeam:null, clueGiver:null, categoryIndex:null, target:null, hintWord:null, guessValue:null, greyedNumbers:[] };
+let selectedGuess = null;
+
+const joinView = document.getElementById('joinView');
+const gameView = document.getElementById('gameView');
+const nameSelect = document.getElementById('nameSelect');
+const content = document.getElementById('content');
+
+// Farbe fuer Skalen-Zahlen 1-10: von --cold nach --hot interpoliert,
+// damit die Skala auf dem Handy genauso "heiss" wirkt wie beim Host.
+function lerpFarbe(a, b, t){
+  const ah = a.match(/\w\w/g).map(x=>parseInt(x,16));
+  const bh = b.match(/\w\w/g).map(x=>parseInt(x,16));
+  const r = ah.map((v,i)=>Math.round(v + (bh[i]-v)*t));
+  return '#' + r.map(v=>v.toString(16).padStart(2,'0')).join('');
+}
+function zahlFarbe(n){
+  return lerpFarbe('#3a7bff', '#ff3860', (n-1)/9);
+}
+
+function showGame(){
+  joinView.style.display='none';
+  gameView.style.display='block';
+  document.getElementById('greeting').textContent = 'Hi, ' + myName;
+}
+
+document.getElementById('joinBtn').onclick = async ()=>{
+  const val = window.KA_PUBLIC.normalizeName(nameSelect.value);
+  if(!val) return;
+  myName = val;
+  sessionStorage.setItem('hz_name', myName);
+  const reg = await window.KA_PUBLIC.registerPlayer(myName, 'hotzone');
+  if(!reg.ok) return;
+  // Atomar beitreten: kein kompletter Browser-State wird mehr zurueckgeschrieben.
+  try {
+    const { data, error } = await sb.rpc('hz_join_player', { p_name: myName });
+    if(error) throw error;
+    if(data) state = data;
+  } catch(e){ console.warn('hotzone join:', e); return; }
+  showGame();
+  render();
+};
+
+async function loadState(){
+  const { data } = await sb.from('hz_state').select('state').eq('id',1).single();
+  state = data?.state || state;
+
+  // Wird ein Spieler vom Spielleiter entfernt, darf sein alter Browsername
+  // ihn nicht automatisch wieder in Hotzone anlegen. Stattdessen sauber in
+  // die Beitrittsansicht zurueckgehen; ein erneuter Beitritt ist bewusst moeglich.
+  if(myName && state.players && !state.players[myName]){
+    try {
+      sessionStorage.removeItem('hz_name');
+      sessionStorage.removeItem('ka_current_player_hotzone');
+      sessionStorage.removeItem('ka_player_hotzone');
+    } catch(e) {}
+    myName = '';
+    gameView.style.display='none';
+    joinView.style.display='block';
+    nameSelect.value='';
+    lastViewKey='';
+    return;
+  }
+
+  if(myName && gameView.style.display==='none') showGame();
+  render();
+}
+loadState();
+document.getElementById('nameSelect').addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('joinBtn').click(); });
+// Realtime mit Selbstheilung: bricht die Verbindung ab (Handy sperrt,
+// WLAN wechselt), wird neu verbunden und der verpasste Stand geholt.
+// Solange Realtime steht, laeuft nur ein sehr langsames Sicherheitsnetz
+// statt des frueheren Dauer-Pollings im Sekundentakt.
+if(window.KA_LIVE){
+  KA_LIVE.start({
+    client: sb,
+    tabelle: 'hz_state',
+    laden: async function(){ await loadState(); }
+  });
+} else {
+  setInterval(loadState, 2000);
+}
+
+let lastViewKey = null;
+
+// ---------- JOKER ----------
+// 3 Stueck PRO TEAM fuer das ganze Spiel. Wer das Hinweiswort gibt,
+// darf keinen zuenden - nur die Ratenden im Team.
+const JOKER_INFO = {
+  double: { label: 'RISK',       hint: 'Exakt = doppelte Punkte, eine daneben = Minus' },
+  reroll: { label: 'NEUE FRAGE', hint: 'Neue Kategorie - die geheime Zahl bleibt' },
+  grey:   { label: 'CUT',        hint: 'Zwei zufaellige Zahlen fallen weg' }
+};
+
+function jokerHtml(myTeam){
+  const used = (state.jokersUsed && state.jokersUsed[myTeam]) || {};
+  const btns = Object.entries(JOKER_INFO).map(([key, info]) => {
+    const verbraucht = !!used[key];
+    // Reroll geht nur, solange der Hinweisgeber noch denkt.
+    // Risk und Cut gehen in der Rate-Phase.
+    const passendePhase = (key === 'reroll')
+      ? (state.phase === 'clue')
+      : (state.phase === 'guessing');
+    const aus = verbraucht || !passendePhase;
+    return `<button class="joker" data-j="${key}" ${aus ? 'disabled' : ''}>
+              <span class="lbl">${info.label}</span>
+            </button>`;
+  }).join('');
+  return `<div class="jokers">${btns}</div>
+          <div class="jokerhint" id="jokerHint">Ein Joker pro Team, je einmal im Spiel</div>`;
+}
+
+function bindJoker(myTeam){
+  document.querySelectorAll('.joker').forEach(b => {
+    b.onmouseenter = () => {
+      const h = document.getElementById('jokerHint');
+      if(h) h.textContent = JOKER_INFO[b.dataset.j].hint;
+    };
+    b.onclick = async () => {
+      const key = b.dataset.j;
+      const used = (state.jokersUsed && state.jokersUsed[myTeam]) || {};
+      if(used[key]) return;
+
+      const neueKat = key === 'reroll' ? neueKategorie(JSON.parse(JSON.stringify(state))) : null;
+      const { data, error } = await sb.rpc('hz_use_joker', {
+        p_name: myName,
+        p_joker: key,
+        p_new_category: neueKat
+      });
+      if(error){ console.warn('Hotzone-Joker:', error.message); return; }
+      if(data) state = data;
+      lastViewKey = null;
+      render();
+    };
+  });
+}
+
+// Zwei Zahlen nahe der Zielzahl ausgrauen (Abstand 1-3), nie die Zielzahl selbst
+// Zwei zufaellige Zahlen fallen weg - nie die Zielzahl selbst.
+// Bewusst NICHT nahe am Ziel: sonst waere der Joker zu stark,
+// weil er den Bereich der richtigen Antwort verraten wuerde.
+function zufaelligeZahlenWeg(target){
+  const kandidaten = [];
+  for(let n = 1; n <= 10; n++){ if(n !== target) kandidaten.push(n); }
+  for(let i = kandidaten.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    const t = kandidaten[i]; kandidaten[i] = kandidaten[j]; kandidaten[j] = t;
+  }
+  return kandidaten.slice(0, 2).sort((a,b) => a - b);
+}
+
+function neueKategorie(s2){
+  const used = s2.usedCategories || [];
+  let frei = CATEGORIES.map((_, i) => i).filter(i => !used.includes(i));
+  if(!frei.length) frei = CATEGORIES.map((_, i) => i);
+  const idx = frei[Math.floor(Math.random() * frei.length)];
+  s2.usedCategories = [...used, idx];
+  return idx;
+}
+
+function render(){
+  if(!myName || !state.players[myName]) return;
+  const myTeam = state.players[myName].team;
+  const teamLabel = myTeam==='blue' ? 'Blue' : myTeam==='red' ? 'Red' : '';
+  const teamCls = myTeam==='blue' ? 'teamblue' : myTeam==='red' ? 'teamred' : '';
+
+  const viewKey = JSON.stringify([
+    state.phase, state.activeTeam, state.clueGiver, state.categoryIndex,
+    state.target, state.hintWord, myTeam,
+    state.jokersUsed, state.greyedNumbers, state.doubleActive
+  ]);
+  if(viewKey === lastViewKey) return;
+  lastViewKey = viewKey;
+
+  if(!myTeam){ content.innerHTML = `<div class="status">Du bist beigetreten. Der Spielleiter weist dich jetzt Team Blue oder Team Red zu…</div>`; return; }
+  if(state.phase==='idle' || !state.activeTeam){
+    content.innerHTML = `<div class="status">Du bist in <span class="${teamCls}">Team ${teamLabel}</span>. Warte auf die nächste Runde…</div>`;
+    return;
+  }
+
+  const isActiveTeam = myTeam===state.activeTeam;
+  const isClueGiver = myName===state.clueGiver;
+  const cat = state.categoryIndex!=null ? CATEGORIES[state.categoryIndex] : null;
+
+  if(!isActiveTeam){
+    content.innerHTML = `<div class="status">Team <span class="${state.activeTeam==='blue'?'teamblue':'teamred'}">${state.activeTeam==='blue'?'Blue':'Red'}</span> ist gerade dran. Ihr seid als Nächstes.</div>`;
+    return;
+  }
+
+  if(isClueGiver){
+    if(state.phase==='clue'){
+      content.innerHTML = `
+        <div class="cat-box">
+          <div class="cat-name">${cat.category}</div>
+          <div class="cat-ends"><span class="cold">${cat.left}</span><span class="hot">${cat.right}</span></div>
+          <div class="cat-rail"></div>
+          <div class="target-num">${state.target}</div>
+        </div>
+        <div class="status">Denk dir ein Hinweis-Wort aus, das zu dieser Zahl passt.</div>
+        <input type="text" id="hintInput" placeholder="Dein Hinweis-Wort" maxlength="30" />
+        <button class="submit" id="submitHintBtn">Hinweis-Wort senden</button>
+      `;
+      document.getElementById('submitHintBtn').onclick = submitHint;
+      document.getElementById('hintInput').addEventListener('keydown', e=>{ if(e.key==='Enter') submitHint(); });
+    } else {
+      content.innerHTML = `<div class="status">Dein Team berät sich über deinen Hinweis <b>${state.hintWord||''}</b>…</div>`;
+    }
+    return;
+  }
+
+  // Rest of the active team = guessers
+  if(state.phase==='clue'){
+    content.innerHTML = `<div class="status">Warte auf das Hinweis-Wort von <b>${state.clueGiver}</b>…</div>`
+      + jokerHtml(myTeam);
+    bindJoker(myTeam);
+  } else if(state.phase==='guessing'){
+    content.innerHTML = `
+      <div class="cat-box">
+        <div class="cat-name">${cat.category}</div>
+        <div class="cat-ends"><span class="cold">${cat.left}</span><span class="hot">${cat.right}</span></div>
+        <div class="cat-rail"></div>
+        <div class="hint-word">${state.hintWord}</div>
+      </div>
+      <div class="scale" id="scale"></div>
+      <button class="submit" id="submitGuessBtn" disabled>Tipp abschicken</button>
+      ${jokerHtml(myTeam)}
+    `;
+    bindJoker(myTeam);
+    const scaleEl = document.getElementById('scale');
+    scaleEl.innerHTML = Array.from({length:10},(_, i)=>i+1).map(n=>{
+      const greyed = (state.greyedNumbers||[]).includes(n);
+      const farbe = zahlFarbe(n);
+      return `<button data-num="${n}" style="--num-bg:${farbe}" ${greyed?'disabled':''}>${n}</button>`;
+    }).join('');
+    scaleEl.querySelectorAll('button').forEach(b=>{
+      b.onclick = ()=>{
+        selectedGuess = parseInt(b.dataset.num,10);
+        scaleEl.querySelectorAll('button').forEach(x=>x.classList.remove('selected'));
+        b.classList.add('selected');
+        document.getElementById('submitGuessBtn').disabled = false;
+      };
+    });
+    document.getElementById('submitGuessBtn').onclick = submitGuess;
+  } else if(state.phase==='submitted'){
+    content.innerHTML = `<div class="status">Tipp abgeschickt: <b>${state.guessValue}</b><br>Warte auf Auflösung durch den Host…</div>`;
+  } else if(state.phase==='resolved'){
+    content.innerHTML = `<div class="status">${state.lastResult||'Runde vorbei.'}<br>Nächste Runde kommt gleich.</div>`;
+  }
+}
+
+async function submitHint(){
+  const val = document.getElementById('hintInput').value.trim();
+  if(!val) return;
+  const { data, error } = await sb.rpc('hz_submit_hint', { p_name: myName, p_hint: val });
+  if(error){ console.warn('Hotzone-Hinweis:', error.message); return; }
+  if(data) state = data;
+}
+
+async function submitGuess(){
+  if(selectedGuess==null) return;
+  const { data, error } = await sb.rpc('hz_submit_guess', { p_name: myName, p_guess: selectedGuess });
+  if(error){ console.warn('Hotzone-Tipp:', error.message); return; }
+  if(data) state = data;
+}
+</script>
+<script src="../zurueck.js"></script>
+<script src="../hintergrund.js"></script>
+
+<script>
+// Turnier: Rolle merken und auf Formatwechsel horchen.
+// Schaltet der Spielleiter weiter, springt dieses Geraet mit.
+if(window.TURNIER){
+  TURNIER.setzeRolle('buzzer');
+  TURNIER.starte(typeof sb !== "undefined" ? sb : null);
+}
+</script>
+
+
+<script src="../camera-config.js"></script>
+<script src="../show-camera.js?v=48"></script>
+</body>
+</html>

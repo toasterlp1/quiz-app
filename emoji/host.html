@@ -1,0 +1,554 @@
+<!doctype html>
+<html class="host" lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>Emoji-Rätsel — Host</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@500;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../live.js"></script>
+<script src="../public-client.js"></script>
+<script src="../server-time.js?v=48"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/@twemoji/api@15.1.0/dist/twemoji.min.js" crossorigin="anonymous"></script>
+<script src="./raetsel.js"></script>
+<script src="../crew.js"></script>
+<script src="../kern-render.js"></script>
+<script src="../kern-turn.js?v=48"></script>
+
+<script src="../symbole.js"></script>
+<style>
+  /* Handy-Skalierung: Bezugsgroesse wechselt hochkant auf die Hoehe */
+  :root{ --u: 1vw; }
+  @media (max-width:900px) and (orientation:portrait){
+    :root{ --u: 0.62vh; }
+    html.host, body.host{ height:auto; min-height:100%; overflow-y:auto; overflow-x:hidden; }
+  }
+  @media (max-width:900px) and (orientation:portrait) and (min-aspect-ratio:3/5){
+    :root{ --u: 0.72vh; }
+  }
+  @media (max-height:520px) and (orientation:landscape){
+    :root{ --u: 1.35vh; }
+  }
+
+  :root{
+    --bg:#0a0e1a; --bg2:#100a20; --panel:#161029; --panel2:#1c1436; --border:#2c2350;
+    --ink:#eef1f8; --muted:#8579a8;
+    --accent:#c76bff; --accent2:#ff6bd6; --gold:#ffd166; --bad:#ff3860;
+    --ease:cubic-bezier(.22,.9,.32,1); --ease-out:cubic-bezier(.16,1,.3,1);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{width:calc(100 * var(--u));height:100vh;overflow:hidden;font-family:'Inter',sans-serif;color:var(--ink);}
+  body{background:var(--bg);}
+
+  .orbs{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none;}
+  .orbs span{position:absolute;border-radius:50%;filter:blur(100px);will-change:transform;opacity:.5;}
+  .orbs .o1{width:calc(44 * var(--u));height:calc(44 * var(--u));top:calc(-14 * var(--u));left:calc(-10 * var(--u));background:radial-gradient(circle,rgba(199,107,255,.5),transparent 68%);animation:dA 26s var(--ease) infinite alternate;}
+  .orbs .o2{width:calc(40 * var(--u));height:calc(40 * var(--u));bottom:calc(-14 * var(--u));right:calc(-8 * var(--u));background:radial-gradient(circle,rgba(255,107,214,.35),transparent 68%);animation:dB 30s var(--ease) infinite alternate;}
+  .orbs .o3{width:calc(30 * var(--u));height:calc(30 * var(--u));top:42%;left:46%;background:radial-gradient(circle,rgba(255,209,102,.22),transparent 70%);animation:dC 34s var(--ease) infinite alternate;}
+  @keyframes dA{0%{transform:translate(0,0) scale(1);}100%{transform:translate(calc(6 * var(--u)),calc(9 * var(--u))) scale(1.14);}}
+  @keyframes dB{0%{transform:translate(0,0) scale(1);}100%{transform:translate(calc(-7 * var(--u)),calc(-6 * var(--u))) scale(1.12);}}
+  @keyframes dC{0%{transform:translate(0,0) scale(1);}100%{transform:translate(0,calc(-5 * var(--u))) scale(1.18);}}
+  .sparkles{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none;}
+  .spark{position:absolute;border-radius:50%;background:#fff;box-shadow:0 0 8px 1px rgba(255,255,255,.8);animation:twinkle ease-in-out infinite;}
+  @keyframes twinkle{0%,100%{opacity:0;transform:scale(.4);}50%{opacity:.9;transform:scale(1);}}
+
+  .stage{
+    position:relative;z-index:2;width:calc(100 * var(--u));height:100vh;
+    display:flex;flex-direction:column;align-items:center;padding:2.6vh calc(2 * var(--u)) 2.4vh;
+  }
+
+  .header{display:flex;flex-direction:column;align-items:center;margin-bottom:.6vh;animation:riseIn .6s var(--ease-out) both;}
+  .title{
+    font-family:'Anton',sans-serif;font-size:calc(3 * var(--u));letter-spacing:5px;line-height:1;
+    background:linear-gradient(180deg,#f3e8ff 0%, var(--accent) 45%, var(--accent2) 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    filter:drop-shadow(0 0 22px rgba(199,107,255,.45));
+  }
+  .title-rule{width:calc(11 * var(--u));height:4px;border-radius:3px;margin-top:1vh;
+    background:linear-gradient(90deg, var(--accent), var(--accent2), var(--gold));
+    box-shadow:0 0 16px rgba(199,107,255,.45);position:relative;overflow:hidden;}
+  .title-rule::after{content:'';position:absolute;top:0;left:-40%;width:40%;height:100%;
+    background:linear-gradient(90deg,transparent,rgba(255,255,255,.7),transparent);animation:sweep 2.8s var(--ease) infinite;}
+  @keyframes sweep{0%{left:-40%;}100%{left:120%;}}
+
+  /* Rundenzaehler oben rechts */
+  .round-counter{
+    position:absolute;right:calc(2 * var(--u));top:2.4vh;z-index:60;
+    background:#0d1220;border:1px solid rgba(255,255,255,.18);border-radius:16px;
+    padding:1vh calc(1.8 * var(--u));
+    font-family:'Anton',sans-serif;font-size:calc(2.2 * var(--u));color:#fff;line-height:1;
+    box-shadow:0 8px 26px -10px rgba(0,0,0,.9);
+  }
+
+  /* Buzzer-Orb + Buzz Order rechts */
+  .buzz-side{
+    position:absolute;right:calc(2 * var(--u));top:calc(2.4vh + 9vh);z-index:60;
+    display:flex;flex-direction:column;align-items:center;gap:1.4vh;width:calc(14 * var(--u));
+  }
+  .buzz-orb{
+    border:0;cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;
+    width:calc(7 * var(--u));height:calc(7 * var(--u));border-radius:50%;
+    background:linear-gradient(150deg,var(--accent),var(--accent2));
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Anton',sans-serif;font-size:calc(1.05 * var(--u));letter-spacing:2px;color:#fff;
+    box-shadow:0 0 34px -4px rgba(199,107,255,.85), 0 0 0 2px rgba(255,255,255,.14) inset;
+    animation:orbPulse 1.9s ease-in-out infinite;
+  }
+  @keyframes orbPulse{
+    0%,100%{box-shadow:0 0 30px -6px rgba(199,107,255,.75), 0 0 0 2px rgba(255,255,255,.14) inset;}
+    50%{box-shadow:0 0 48px 0 rgba(199,107,255,1), 0 0 0 2px rgba(255,255,255,.2) inset;}
+  }
+  .buzz-order{
+    width:100%;border-radius:12px;overflow:hidden;
+    border:1px solid rgba(255,255,255,.14);
+    box-shadow:0 8px 26px -12px rgba(0,0,0,.9);
+  }
+  .buzz-order .head{
+    background:linear-gradient(90deg,var(--accent),var(--accent2));
+    font-family:'Anton',sans-serif;font-size:calc(1 * var(--u));letter-spacing:1px;
+    color:#fff;padding:.9vh calc(.9 * var(--u));
+  }
+  .buzz-order .list{
+    background:#0d1220;min-height:calc(3.6 * var(--u));padding:.9vh calc(.9 * var(--u));
+    display:flex;flex-direction:column;gap:.5vh;
+  }
+  .buzz-order .list .row{
+    font-size:calc(.9 * var(--u));font-weight:700;color:var(--ink);
+    display:flex;align-items:center;gap:.6vh;
+  }
+  .buzz-order .list .row .idx{font-family:'Anton',sans-serif;color:var(--gold);min-width:calc(1 * var(--u));}
+  .buzz-order .list .leer{font-size:calc(.82 * var(--u));color:var(--muted);}
+
+  @media (max-width:900px){
+    .round-counter{right:10px;top:10px;font-size:17px;padding:6px 12px;}
+    .buzz-side{position:static;width:auto;flex-direction:row;margin:14px auto 0;justify-content:center;}
+    .buzz-orb{width:62px;height:62px;font-size:10px;}
+    .buzz-order{width:148px;}
+  }
+
+  .board{margin-top:3.4vh;display:flex;gap:calc(1.6 * var(--u));animation:riseIn .6s var(--ease-out) .1s both;}
+  .slot{
+    position:relative;width:calc(11.5 * var(--u));height:calc(11.5 * var(--u));max-width:190px;max-height:190px;border-radius:22px;
+    background:linear-gradient(160deg, var(--panel2), var(--bg2));
+    border:3px solid var(--border);
+    display:flex;align-items:center;justify-content:center;
+    font-size:calc(6 * var(--u));overflow:hidden;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.06), 0 6px 18px rgba(0,0,0,.4);
+    transition:border-color .35s var(--ease), box-shadow .35s var(--ease), background .35s var(--ease);
+  }
+  .slot.filled{border-color:var(--accent);box-shadow:0 0 36px rgba(199,107,255,.4), inset 0 1px 0 rgba(255,255,255,.08);background:#211636;}
+  .slot.reveal-pop{animation:slotPop .55s var(--ease);}
+  .slot.reveal-pop::after{
+    content:'';position:absolute;inset:0;
+    background:linear-gradient(115deg,transparent 20%,rgba(255,255,255,.55) 42%,transparent 64%);
+    transform:translateX(-120%);animation:slotShine .7s ease-out;
+  }
+  @keyframes slotShine{to{transform:translateX(120%);}}
+  @keyframes slotPop{
+    0%{transform:scale(.75) rotate(-6deg);opacity:.2;}
+    55%{transform:scale(1.1) rotate(3deg);opacity:1;}
+    100%{transform:scale(1) rotate(0deg);opacity:1;}
+  }
+  .slot .hidden-mark{color:var(--muted);font-size:calc(3.4 * var(--u));font-family:'Anton',sans-serif;}
+  .slot img.emoji{width:calc(6 * var(--u));height:calc(6 * var(--u));max-width:104px;max-height:104px;}
+
+  .reveal-bar{
+    position:relative;width:min(900px,80%);height:28px;margin:2.6vh auto 0;
+    background:linear-gradient(180deg,var(--panel2),var(--bg2));
+    border:1px solid var(--border);
+    border-radius:9px;overflow:hidden;
+    box-shadow:0 6px 22px -8px rgba(199,107,255,.35), inset 0 1px 0 rgba(255,255,255,.1);
+    animation:riseIn .6s var(--ease-out) .18s both;
+  }
+  .reveal-bar .divider{
+    position:absolute;top:0;bottom:0;width:2px;
+    background:rgba(255,255,255,.85);
+    box-shadow:0 0 6px rgba(255,255,255,.5);
+    z-index:3;
+  }
+  .reveal-bar .done{
+    position:absolute;top:0;bottom:0;left:0;
+    background:linear-gradient(180deg,#d68eff,var(--accent));
+    z-index:1;transition:width .5s var(--ease);
+  }
+  .reveal-bar .ticker{
+    position:absolute;top:0;bottom:0;
+    background:linear-gradient(180deg,#ffdf94,var(--gold));
+    z-index:2;
+    box-shadow:0 0 14px rgba(255,209,102,.75);
+  }
+  .reveal-bar.paused .ticker{animation:tickerPulse 1s ease-in-out infinite;}
+  @keyframes tickerPulse{0%,100%{opacity:1;} 50%{opacity:.4;}}
+  .reveal-bar .lbl{
+    position:absolute;inset:0;z-index:4;
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Anton',sans-serif;font-size:13px;letter-spacing:2px;
+    color:#fff;text-shadow:0 2px 6px rgba(0,0,0,.7);
+    pointer-events:none;
+  }
+
+  .points-badge{
+    margin-top:2.4vh;padding:1.1vh calc(2.4 * var(--u));border-radius:999px;
+    background:rgba(10,14,26,.85);border:3px solid var(--gold);
+    font-family:'Anton',sans-serif;font-size:calc(1.7 * var(--u));color:var(--ink);letter-spacing:1px;
+    box-shadow:0 0 24px rgba(255,209,102,.4);
+    transition:border-color .4s var(--ease), box-shadow .4s var(--ease), color .4s var(--ease);
+    animation:riseIn .6s var(--ease-out) .24s both;
+  }
+  .points-badge.low{border-color:var(--bad);box-shadow:0 0 24px rgba(255,56,96,.45);color:var(--bad);}
+
+  .active-buzzer{
+    margin-top:1.8vh;height:3.2vh;font-family:'Anton',sans-serif;font-size:calc(1.5 * var(--u));
+    letter-spacing:2px;color:var(--gold);text-shadow:0 0 16px rgba(255,209,102,.55);
+    opacity:0;transform:translateY(6px);
+    transition:opacity .3s var(--ease), transform .3s var(--ease);
+  }
+  .active-buzzer.show{opacity:1;transform:translateY(0);}
+
+  .solved-banner{
+    margin-top:1vh;font-family:'Anton',sans-serif;font-size:calc(2.4 * var(--u));color:var(--accent2);
+    text-shadow:0 0 26px rgba(255,107,214,.7);opacity:0;transform:scale(.85);
+    transition:opacity .35s var(--ease), transform .35s var(--ease);
+  }
+  .solved-banner.show{opacity:1;transform:scale(1);}
+
+  .scoreboard{display:flex;gap:calc(1 * var(--u));flex-wrap:wrap;justify-content:center;margin-top:auto;padding-top:2vh;max-width:1200px;}
+  .player-card{
+    position:relative;min-width:calc(8.6 * var(--u));padding:1.4vh calc(1.3 * var(--u));border-radius:16px;
+    background:linear-gradient(165deg,var(--panel2),var(--panel));border:2px solid var(--border);
+    text-align:center;display:flex;flex-direction:column;align-items:center;gap:.7vh;
+    transition:border-color .3s var(--ease), box-shadow .3s var(--ease), opacity .3s var(--ease), transform .3s var(--ease);
+  }
+  .player-card.active{transform:translateY(-3px);}
+  .player-card.out{opacity:.42;}
+  .avatar-ring{
+    position:relative;width:calc(3.4 * var(--u));height:calc(3.4 * var(--u));border-radius:50%;
+    background:#1b1230;border:calc(.16 * var(--u)) solid var(--border);padding:calc(.18 * var(--u));
+    transition:all .4s var(--ease);
+  }
+  .avatar-ring img,.avatar-ring .fallback{width:100%;height:100%;border-radius:50%;object-fit:cover;background:#1b1230;position:relative;z-index:1;}
+  .avatar-ring .fallback{display:flex;align-items:center;justify-content:center;color:var(--muted);font-weight:800;font-size:calc(1.1 * var(--u));}
+  .player-card .name{font-size:calc(.95 * var(--u));font-weight:800;color:#fff;letter-spacing:.2px;}
+  .player-card .score{font-family:'Anton',sans-serif;font-size:calc(1.7 * var(--u));color:var(--accent);margin-top:-.2vh;font-variant-numeric:tabular-nums;}
+  .player-card .score.bump{animation:bump .5s var(--ease-out);}
+  @keyframes bump{0%{transform:scale(1);}35%{transform:scale(1.24);color:var(--gold);}100%{transform:scale(1);}}
+
+  @keyframes riseIn{from{opacity:0;transform:translateY(18px);}to{opacity:1;transform:translateY(0);}}
+  @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;}}
+
+/* KLAPSEN — premium format thumbnail at the top-center */
+.ka-top-logo{
+  position:fixed; left:50%; top:0; transform:translateX(-50%);
+  width:auto; height:auto; max-width:min(420px, calc(100vw - 24px));
+  max-height:clamp(100px, 16.7vh, 180px);
+  object-fit:contain; object-position:center top;
+  z-index:9999; pointer-events:none; user-select:none;
+  filter:drop-shadow(0 10px 24px rgba(0,0,0,.55));
+}
+:root{ --ka-logo-space:calc(clamp(100px, 16.7vh, 180px) + 18px); }
+@media (max-width:900px){
+  .ka-top-logo{max-width:min(300px, calc(100vw - 18px)); max-height:clamp(88px, 15vh, 120px);}
+  :root{ --ka-logo-space:calc(clamp(88px, 15vh, 120px) + 14px); }
+}
+@media (max-width:560px){
+  .ka-top-logo{max-width:260px;}
+}
+
+.stage{padding-top:var(--ka-logo-space) !important;}
+.header{display:none !important;}
+</style>
+<link rel="stylesheet" href="../responsive.css" />
+<link rel="stylesheet" href="../hintergrund-host.css" />
+<link rel="stylesheet" href="../kern-turn.css?v=48" />
+<style>:root{ --akzent-rgb: 199,107,255; --akzent2-rgb: 60,140,240; --kern-akzent: 199,107,255; --kern-akzent2: 60,140,240; }</style>
+<link rel="stylesheet" href="../show-camera.css">
+\n<style>\n/* v48 OBS-Safe-Area: Buzzer/Liste sichtbar, Zeitleiste niemals hinter Kameras. */\nbody.ka-stream .buzz-side{display:flex!important;right:22px;top:150px;width:230px;z-index:12000}\nbody.ka-stream .buzz-orb{width:92px;height:92px;font-size:14px}\nbody.ka-stream #kernBuzzListeSlot{width:100%}\nbody.ka-stream .stage{padding-bottom:25vh!important}\nbody.ka-stream .reveal-bar{position:relative;z-index:200;margin-bottom:2vh}\nbody.ka-stream .scoreboard,body.ka-stream .active-buzzer{display:none!important}\n</style>\n</head>
+<body class="host">
+<div class="orbs" aria-hidden="true"><span class="o1"></span><span class="o2"></span><span class="o3"></span></div>
+<div class="sparkles" id="sparkles" aria-hidden="true"></div>
+
+<div class="stage">
+  <img class="ka-top-logo" src="./host-logo.png" alt="" aria-hidden="true">
+  <div class="header">
+    <div class="title">EMOJI-RÄTSEL</div>
+    <div class="title-rule"></div>
+  </div>
+
+  <div class="round-counter" id="roundCounter">1</div>
+
+  <div class="buzz-side">
+    <button class="buzz-orb" id="emojiHostBuzzBtn" type="button">BUZZER</button>
+    <div id="kernBuzzListeSlot"></div>
+  </div>
+  <div class="board" id="board"></div>
+  <div class="points-badge" id="pointsBadge" style="display:none;"></div>
+  <div class="reveal-bar" id="revealBar" style="display:none;">
+    <div class="done" id="revealDone"></div>
+    <div class="ticker" id="revealTicker"></div>
+    <div class="divider" style="left:25%"></div>
+    <div class="divider" style="left:50%"></div>
+    <div class="divider" style="left:75%"></div>
+    <div class="lbl" id="revealLbl"></div>
+  </div>
+  <div class="active-buzzer" id="activeBuzzer"></div>
+  <div class="solved-banner" id="solvedBanner"></div>
+  <div class="scoreboard" id="scoreboard"></div>
+</div>
+
+<script>
+const sb = window.KA_SB;
+const boardEl = document.getElementById('board');
+const pointsBadge = document.getElementById('pointsBadge');
+const revealBar = document.getElementById('revealBar');
+const revealDone = document.getElementById('revealDone');
+const revealTicker = document.getElementById('revealTicker');
+const revealLbl = document.getElementById('revealLbl');
+
+const REVEAL_SEKUNDEN = 12;
+
+function animateBar(){
+  requestAnimationFrame(animateBar);
+  if(!state || state.riddleIndex == null){
+    revealBar.style.display = 'none';
+    return;
+  }
+  revealBar.style.display = 'block';
+
+  const revealed = state.revealedCount || 0;
+  const solved = !!state.solved;
+
+  revealDone.style.width = (Math.min(revealed, 4) * 25) + '%';
+
+  if(revealed >= 4 || solved || !state.revealAt){
+    revealTicker.style.width = '0%';
+    revealBar.classList.remove('paused');
+    revealLbl.textContent = solved ? 'GELÖST' : (revealed >= 4 ? 'ALLE EMOJIS OFFEN' : '');
+    return;
+  }
+
+  const wartetAufBuzzer = (state.buzzQueue || []).some(n => !(state.buzzedOut || []).includes(n));
+  revealBar.classList.toggle('paused', wartetAufBuzzer);
+
+  const restMs = state.revealAt - KA_NOW();
+  const verstrichen = 1 - Math.max(0, Math.min(1, restMs / (REVEAL_SEKUNDEN * 1000)));
+
+  const start = Math.min(revealed, 4) * 25;
+  revealTicker.style.left = start + '%';
+  revealTicker.style.width = (verstrichen * 25) + '%';
+
+  const sek = Math.max(0, Math.ceil(restMs / 1000));
+  revealLbl.textContent = wartetAufBuzzer
+    ? 'BUZZER — ZEIT ANGEHALTEN'
+    : `NÄCHSTES EMOJI IN ${sek}s`;
+}
+const activeBuzzerEl = document.getElementById('activeBuzzer');
+
+let fxLetzterBuzzer = null;
+
+let fxSolvedFuerRaetsel = null;
+let fxBuzzedOutGesehen = [];
+let fxLetzteRiddleIndex = null;
+const solvedBanner = document.getElementById('solvedBanner');
+const scoreboardEl = document.getElementById('scoreboard');
+let letzteScores = {};
+
+let state = null;
+const kernBuzzListe = KernTurn.buzzListe(document.getElementById('kernBuzzListeSlot'), { titel: 'REIHENFOLGE' });
+if(emojiHostBuzzBtn && !emojiHostPlayerName) emojiHostBuzzBtn.title='Spielername auf dieser Sitzung fehlt';
+
+// Scoreboard ruhig verwalten - kein Neuaufbau bei jedem Realtime-Tick.
+const emojiScoreboardListe = KernRender.liste(document.getElementById('scoreboard'), {
+  schluessel: p => p.name,
+  erstellen: p => {
+    const avatarUrl = avatarFor(p.name);
+    const initial = p.name.charAt(0).toUpperCase();
+    const el = document.createElement('div');
+    el.innerHTML = `
+      <div class="avatar-ring" style="position:relative;">
+        <span class="ka-badge-tr" style="display:none;"></span>
+        ${avatarUrl ? `<img src="${avatarUrl}" alt="">` : `<div class="fallback">${initial}</div>`}
+      </div>
+      <div class="name"></div>
+      <div class="score"></div>`;
+    return el;
+  },
+  aktualisieren: (el, p) => {
+    el.className = `player-card ${p.__active?'active':''} ${p.__out?'out':''}`;
+    const ring = el.querySelector('.avatar-ring');
+    ring.classList.toggle('ka-live-green', !!p.__active);
+    const badge = ring.querySelector('.ka-badge-tr');
+    badge.style.display = p.__active ? '' : 'none';
+    if(p.__active && !badge.innerHTML) badge.innerHTML = KA.mic();
+    KernRender.textWennGeaendert(el.querySelector('.name'), p.name);
+    KernRender.textWennGeaendert(el.querySelector('.score'), p.score);
+  }
+});
+animateBar();
+let lastRevealedCount = 0;
+let lastRiddleIndex = null;
+
+function render(){
+  if(window.HOSTPODEST && state) HOSTPODEST.pruefe(state);
+  if(!state) return;
+  const { players={}, riddleIndex=null, revealedCount=0, solved=false, buzzQueue=[], buzzedOut=[] } = state;
+
+  if(riddleIndex !== fxLetzteRiddleIndex){
+    fxSolvedFuerRaetsel = null;
+    fxBuzzedOutGesehen = [];
+    fxLetzteRiddleIndex = riddleIndex;
+  }
+
+  if(riddleIndex!=null && RAETSEL[riddleIndex]){
+    if(riddleIndex !== lastRiddleIndex){ lastRevealedCount = 0; lastRiddleIndex = riddleIndex; }
+    const riddle = RAETSEL[riddleIndex];
+    boardEl.innerHTML = riddle.emojis.map((e,i)=>{
+      const shown = i < revealedCount;
+      const justRevealed = shown && i >= lastRevealedCount;
+      const cls = ['slot'];
+      if(shown) cls.push('filled');
+      if(justRevealed) cls.push('reveal-pop');
+      return `<div class="${cls.join(' ')}">${shown ? e : '<span class="hidden-mark">?</span>'}</div>`;
+    }).join('');
+    lastRevealedCount = revealedCount;
+    if(window.twemoji) twemoji.parse(boardEl, {
+      callback: (icon) => 'https://cdn.jsdelivr.net/npm/@twemoji/svg@15.0.0/' + icon + '.svg'
+    });
+    const pts = 5 - revealedCount;
+    pointsBadge.style.display='block';
+    pointsBadge.textContent = pts + ' PUNKT' + (pts===1?'':'E');
+    pointsBadge.classList.toggle('low', pts===1);
+  } else {
+    boardEl.innerHTML = `<div class="slot"><span class="hidden-mark" style="font-size:1.6vw;">Warte…</span></div>`;
+    pointsBadge.style.display='none';
+    lastRiddleIndex = null;
+  }
+
+  const active = buzzQueue.find(n=>!buzzedOut.includes(n));
+
+  if(active && active !== fxLetzterBuzzer && window.HOSTFX){
+    HOSTFX.buzz(active, avatarFor(active));
+  }
+  fxLetzterBuzzer = active || null;
+
+  if(solved && riddleIndex!=null && fxSolvedFuerRaetsel !== riddleIndex){
+    fxSolvedFuerRaetsel = riddleIndex;
+    if(window.HOSTFX && active) HOSTFX.correct(active);
+  }
+
+  if(!solved){
+    buzzedOut.forEach(name => {
+      if(!fxBuzzedOutGesehen.includes(name)){
+        fxBuzzedOutGesehen.push(name);
+        if(window.HOSTFX) HOSTFX.wrong(name);
+      }
+    });
+  } else {
+    fxBuzzedOutGesehen = [...buzzedOut];
+  }
+
+  const datensaetze = Object.entries(players).map(([name,score]) => ({
+    name, score,
+    __active: name===active && !solved,
+    __out: buzzedOut.includes(name) && !solved
+  }));
+  emojiScoreboardListe.render(datensaetze);
+
+  Object.entries(players).forEach(([name,score])=>{
+    const prev = letzteScores[name];
+    if(prev !== undefined && prev !== score){
+      const el = document.getElementById('score-'+name.replace(/[^a-zA-Z0-9]/g,'_'));
+      if(el){ el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
+    }
+    letzteScores[name] = score;
+  });
+
+  activeBuzzerEl.textContent = active && !solved ? active + ' ist dran!' : '';
+  activeBuzzerEl.classList.toggle('show', !!(active && !solved));
+
+  kernBuzzListe.aktualisieren(buzzQueue, buzzQueue.find(n => !buzzedOut.includes(n)), buzzedOut);
+  const roundEl = document.getElementById('roundCounter');
+  if(roundEl) roundEl.textContent = (state.usedIndices || []).length || (riddleIndex!=null ? 1 : 0);
+
+  if(solved && riddleIndex!=null && RAETSEL[riddleIndex]){
+    solvedBanner.textContent = RAETSEL[riddleIndex].antwort;
+    solvedBanner.classList.add('show');
+  } else {
+    solvedBanner.classList.remove('show');
+  }
+}
+
+async function loadState(){
+  const { data } = await sb.from('er_state').select('state').eq('id',1).single();
+  state = data?.state || {};
+  render();
+}
+loadState();
+// Realtime mit Selbstheilung: bricht die Verbindung ab (Handy sperrt,
+// WLAN wechselt), wird neu verbunden und der verpasste Stand geholt.
+// Solange Realtime steht, laeuft nur ein sehr langsames Sicherheitsnetz
+// statt des frueheren Dauer-Pollings im Sekundentakt.
+if(window.KA_LIVE){
+  KA_LIVE.start({
+    client: sb,
+    tabelle: 'er_state',
+    laden: async function(){ await loadState(); }
+  });
+} else {
+  setInterval(loadState, 2000);
+}
+
+(function(){
+  const e = document.getElementById('sparkles');
+  for(let i=0;i<28;i++){
+    const s = document.createElement('div');
+    s.className = 'spark';
+    const sz = 2 + Math.random()*3;
+    s.style.width = sz+'px'; s.style.height = sz+'px';
+    s.style.left = (Math.random()*100)+'vw';
+    s.style.top = (Math.random()*100)+'vh';
+    s.style.animationDuration = (2.5+Math.random()*3.5)+'s';
+    s.style.animationDelay = (-Math.random()*6)+'s';
+    e.appendChild(s);
+  }
+})();
+</script>
+<script src="../zurueck.js"></script>
+<script>window.KA_HOST_BUZZER_CONFIG={format:'emoji',game:'emoji',table:'er_state',nameKey:'er_name',freeze:false};</script>
+<script src="../host-buzzer-player.js"></script>
+<script src="../camera-config.js"></script>
+<script src="../stream-mode.js?v=48"></script>
+<script src="../show-camera.js?v=48"></script>
+<script src="../host-fx.js"></script>
+
+<script>
+// Zeigt das Podest automatisch, sobald alle Runden gespielt sind.
+if(window.HOSTPODEST) HOSTPODEST.init({
+  punkte: function(s){
+    var p = s.players || {};
+    return Object.keys(p).map(function(n){
+      var v = p[n];
+      return { spieler: n, punkte: (typeof v === 'number') ? v : (v && v.score) || 0 };
+    });
+  }
+});
+</script>
+
+<script>
+// Turnier: Rolle merken und auf Formatwechsel horchen.
+// Schaltet der Spielleiter weiter, springt dieses Geraet mit.
+if(window.TURNIER){
+  TURNIER.setzeRolle('host');
+  TURNIER.starte(typeof sb !== "undefined" ? sb : null);
+}
+</script>
+<script>
+(function(){
+})();
+</script>
+<script src="../active-stream-mode.js?v=48"></script>
+</body>
+</html>

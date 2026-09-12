@@ -1,0 +1,599 @@
+<!doctype html>
+<html class="host" lang="de">
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta charset="utf-8" />
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>WWM — Host</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@600;700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../live.js"></script>
+<script src="../public-client.js"></script>
+
+<script src="../crew.js"></script>
+<script src="../kern-render.js"></script>
+<script src="questions.js"></script>
+<style>
+  /* Handy-Skalierung: Bezugsgroesse wechselt hochkant auf die Hoehe */
+  :root{ --u: 1vw; }
+  @media (max-width:900px) and (orientation:portrait){
+    :root{ --u: 0.62vh; }
+    html.host, body.host{ height:auto; min-height:100%; overflow-y:auto; overflow-x:hidden; }
+  }
+  @media (max-width:900px) and (orientation:portrait) and (min-aspect-ratio:3/5){
+    :root{ --u: 0.72vh; }
+  }
+  @media (max-height:520px) and (orientation:landscape){
+    :root{ --u: 1.35vh; }
+  }
+
+  :root{
+    --ink:#f3f0ff; --muted:#8b84b0;
+    --gold:#f5c542; --spy:#6c5ce7; --risk:#c44dff;
+    --good:#22c55e; --bad:#ff3860;
+    --frame:#a855f7;
+    --ease:cubic-bezier(.22,.9,.32,1);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{width:1920px;height:1080px;overflow:hidden;}
+  body{
+    background:
+      radial-gradient(ellipse 100% 70% at 50% 0%, #3a2168 0%, transparent 70%),
+      radial-gradient(ellipse 100% 60% at 50% 100%, #301a5c 0%, transparent 75%),
+      linear-gradient(180deg, #2a1a4d 0%, #241547 50%, #23144a 100%);
+    color:var(--ink);font-family:'Inter',sans-serif;
+    display:flex;flex-direction:column;
+  }
+
+  body::before{
+    content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+    background-image:radial-gradient(rgba(255,255,255,.07) 1px, transparent 1px);
+    background-size:22px 22px;
+  }
+
+  .top{
+    position:relative;z-index:2;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:34px 56px 0;
+  }
+  .logo{
+    font-family:'Anton',sans-serif;font-size:52px;letter-spacing:3px;
+    color:#fff;text-shadow:0 0 26px rgba(168,85,247,.85), 0 4px 0 #5b2b8f;
+  }
+  .logo span{color:var(--gold);}
+
+  .pills{display:flex;gap:14px;}
+  .pill{
+    display:flex;align-items:center;gap:9px;
+    background:rgba(255,255,255,.06);border:1px solid rgba(168,85,247,.45);
+    border-radius:999px;padding:11px 22px;
+    font-weight:900;font-size:17px;letter-spacing:.5px;
+    backdrop-filter:blur(6px);
+  }
+  .pill .ic{display:inline-flex;width:17px;height:17px;opacity:.9;color:var(--gold);}
+  .pill .ic svg{width:100%;height:100%;display:block;}
+  .joker .badge svg{width:100%;height:100%;display:block;}
+
+  .jokers{
+    position:relative;z-index:2;
+    display:flex;gap:16px;justify-content:center;
+    margin-top:22px;
+  }
+  .joker{
+    position:relative;width:186px;height:58px;
+    display:flex;align-items:center;justify-content:center;
+    transition:transform .35s var(--ease), filter .35s;
+  }
+  .joker::before{
+    content:'';position:absolute;inset:0;background:var(--jc);
+    clip-path:polygon(11% 0%, 89% 0%, 100% 50%, 89% 100%, 11% 100%, 0% 50%);
+  }
+  .joker::after{
+    content:'';position:absolute;inset:3px;background:#17102c;
+    clip-path:polygon(11% 0%, 89% 0%, 100% 50%, 89% 100%, 11% 100%, 0% 50%);
+  }
+  .joker .in{
+    position:relative;z-index:2;display:flex;align-items:center;gap:11px;
+    font-family:'Anton',sans-serif;font-size:23px;letter-spacing:1.5px;color:#fff;
+  }
+  .joker .badge{
+    width:32px;height:32px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    font-size:16px;background:var(--jc);color:#fff;
+  }
+  .joker[data-j="5050"]{--jc:var(--gold);}
+  .joker[data-j="spy"]{--jc:var(--spy);}
+  .joker[data-j="risk"]{--jc:var(--risk);}
+  .joker[data-j="5050"] .badge{color:#3a2c00;}
+
+  .joker.live{
+    transform:scale(1.09);
+    filter:drop-shadow(0 0 22px var(--jc)) brightness(1.25);
+    animation:pulse 1.1s ease-in-out infinite;
+  }
+  @keyframes pulse{
+    0%,100%{ filter:drop-shadow(0 0 16px var(--jc)) brightness(1.2); }
+    50%    { filter:drop-shadow(0 0 34px var(--jc)) brightness(1.45); }
+  }
+  .joker.live .who{
+    position:absolute;left:50%;top:-24px;transform:translateX(-50%);
+    font-family:'Inter',sans-serif;font-weight:900;font-size:12px;letter-spacing:1px;
+    text-transform:uppercase;color:var(--jc);white-space:nowrap;z-index:3;
+  }
+
+  .stage{
+    position:relative;z-index:2;flex:1;
+    display:flex;flex-direction:column;justify-content:center;
+    padding:0 110px;margin-top:14px;
+  }
+  .qframe{
+    border:2px solid var(--frame);border-radius:22px;
+    background:linear-gradient(180deg, rgba(88,28,135,.42), rgba(50,16,80,.30));
+    box-shadow:0 0 44px rgba(168,85,247,.42), inset 0 0 60px rgba(168,85,247,.10);
+    padding:26px;
+  }
+  .qtext{
+    border:1px solid rgba(168,85,247,.5);border-radius:14px;
+    background:rgba(30,10,55,.5);
+    min-height:150px;display:flex;align-items:center;justify-content:center;
+    padding:26px 38px;
+    font-size:44px;font-weight:700;text-align:center;line-height:1.25;
+    text-shadow:0 2px 18px rgba(0,0,0,.5);
+  }
+
+  .answers{
+    display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:24px;
+  }
+  .ans{
+    position:relative;display:flex;align-items:center;gap:16px;
+    border:1.5px solid rgba(168,85,247,.30);border-radius:14px;
+    background:rgba(255,255,255,.035);
+    padding:26px 28px;min-height:110px;
+    transition:all .4s var(--ease);
+  }
+  .ans .key{
+    font-family:'Anton',sans-serif;font-size:26px;letter-spacing:2px;
+    color:var(--muted);transition:color .4s;
+  }
+  .ans .txt{
+    font-size:28px;font-weight:700;letter-spacing:.5px;
+    text-transform:uppercase;
+  }
+
+  .voters{margin-left:auto;display:flex;align-items:center;}
+  .voters .n{
+    width:34px;height:34px;border-radius:50%;background:var(--frame);
+    display:flex;align-items:center;justify-content:center;
+    font-weight:900;font-size:15px;color:#fff;margin-right:6px;
+    box-shadow:0 0 12px rgba(168,85,247,.6);
+  }
+  .voters img{
+    width:38px;height:38px;border-radius:50%;
+    border:2px solid rgba(255,255,255,.55);margin-left:-10px;
+    box-shadow:0 2px 10px rgba(0,0,0,.5);
+  }
+
+  .ans.correct{
+    border-color:var(--good);background:rgba(34,197,94,.16);
+    box-shadow:0 0 30px rgba(34,197,94,.45);
+  }
+  .ans.correct .key, .ans.correct .txt{color:#6ee7a8;}
+  .ans.dim{opacity:.42;}
+
+  .players{
+    position:relative;z-index:2;
+    display:flex;gap:12px;padding:16px 40px 32px;
+    justify-content:center;
+  }
+  .p{
+    position:relative;flex:0 0 268px;
+    border:2px solid rgba(255,255,255,.10);border-radius:14px;
+    background:rgba(255,255,255,.04);
+    padding:14px 16px;
+    display:flex;align-items:center;gap:12px;
+    transition:border-color .4s, background .4s, box-shadow .4s;
+  }
+  .p img{width:52px;height:52px;border-radius:50%;flex:0 0 52px;}
+  .p .info{min-width:0;flex:1;}
+  .p .nm{
+    font-weight:900;font-size:17px;letter-spacing:.3px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .p .pts{font-family:'Anton',sans-serif;font-size:22px;color:var(--gold);line-height:1.1;}
+
+  .p .state{
+    position:absolute;left:10px;top:-12px;
+    font-size:12px;font-weight:900;letter-spacing:.4px;
+    padding:4px 11px;border-radius:8px;white-space:nowrap;
+    background:#2a2145;color:var(--muted);
+    box-shadow:0 2px 10px rgba(0,0,0,.45);
+  }
+  .p .state.done{background:#3c3466;color:#c9c2ee;}
+  .p .state.ok{background:var(--good);color:#04250f;}
+  .p .state.no{background:var(--bad);color:#fff;}
+
+  .p .jks{position:absolute;right:10px;top:-12px;display:flex;gap:4px;}
+  .p .jks span{
+    width:24px;height:24px;border-radius:6px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:12px;color:#fff;
+    box-shadow:0 2px 8px rgba(0,0,0,.45);
+    transition:opacity .3s, transform .3s;
+  }
+  .p .jks span svg{width:14px;height:14px;display:block;}
+  .jks .j5050{background:var(--gold);color:#3a2c00;}
+  .jks .jspy{background:var(--spy);}
+  .jks .jrisk{background:var(--risk);}
+  .jks .spent{opacity:.16;transform:scale(.9);}
+  .jks .now{
+    transform:scale(1.22);
+    box-shadow:0 0 14px currentColor, 0 2px 8px rgba(0,0,0,.5);
+    animation:pulse 1.1s ease-in-out infinite;
+  }
+
+  .p.correct{border-color:var(--good);background:rgba(34,197,94,.12);box-shadow:0 0 24px rgba(34,197,94,.3);}
+  .p.wrong  {border-color:var(--bad);background:rgba(255,56,96,.10);}
+
+  .idle{
+    position:relative;z-index:2;flex:1;
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Anton',sans-serif;font-size:44px;letter-spacing:3px;color:var(--muted);
+  }
+
+  .ladder{
+    position:fixed;right:20px;top:50%;transform:translateY(-50%);z-index:3;
+    display:flex;flex-direction:column-reverse;gap:4px;
+    background:rgba(13,8,32,.55);backdrop-filter:blur(6px);
+    border:1px solid rgba(168,85,247,.28);border-radius:14px;padding:10px 8px;
+  }
+  .rung{
+    display:flex;align-items:center;justify-content:flex-end;gap:8px;
+    padding:4px 8px;border-radius:8px;min-width:70px;
+    font-family:'Anton',sans-serif;font-size:14px;letter-spacing:.5px;color:var(--muted);
+    transition:color .3s, background .3s, transform .3s;
+  }
+  .rung .n{opacity:.55;}
+  .rung.done{color:#c9b7f5;}
+  .rung.done .n{opacity:.85;}
+  .rung.now{
+    color:#3a2c00;background:linear-gradient(90deg, rgba(245,197,66,.25), var(--gold));
+    transform:scale(1.08) translateX(-2px);
+    box-shadow:0 0 18px rgba(245,197,66,.65);
+    animation:rungPuls 1.3s ease-in-out infinite;
+  }
+  @keyframes rungPuls{
+    0%,100%{ box-shadow:0 0 12px rgba(245,197,66,.5); }
+    50%    { box-shadow:0 0 26px rgba(245,197,66,.9); }
+  }
+
+  .qframe.reveal-good{ animation:frameGood 1.1s var(--ease) both; }
+  @keyframes frameGood{
+    0%{ box-shadow:0 0 44px rgba(168,85,247,.42), inset 0 0 60px rgba(168,85,247,.10); }
+    30%{ box-shadow:0 0 90px rgba(34,197,94,.75), inset 0 0 90px rgba(34,197,94,.25); border-color:var(--good); }
+    100%{ box-shadow:0 0 44px rgba(168,85,247,.42), inset 0 0 60px rgba(168,85,247,.10); }
+  }
+
+/* KLAPSEN — premium format thumbnail at the top-center */
+.ka-top-logo{
+  position:fixed; left:50%; top:0; transform:translateX(-50%);
+  width:auto; height:auto; max-width:min(420px, calc(100vw - 24px));
+  max-height:clamp(100px, 16.7vh, 180px);
+  object-fit:contain; object-position:center top;
+  z-index:9999; pointer-events:none; user-select:none;
+  filter:drop-shadow(0 10px 24px rgba(0,0,0,.55));
+}
+:root{ --ka-logo-space:calc(clamp(100px, 16.7vh, 180px) + 18px); }
+@media (max-width:900px){
+  .ka-top-logo{max-width:min(300px, calc(100vw - 18px)); max-height:clamp(88px, 15vh, 120px);}
+  :root{ --ka-logo-space:calc(clamp(88px, 15vh, 120px) + 14px); }
+}
+@media (max-width:560px){
+  .ka-top-logo{max-width:260px;}
+}
+
+.jokers{margin-top:calc(22px + var(--ka-logo-space)) !important;}
+.top .logo{visibility:hidden !important;}
+</style>
+<link rel="stylesheet" href="../responsive.css" />
+<link rel="stylesheet" href="../hintergrund-host.css" />
+<style>
+  :root{ --akzent-rgb: 168,85,247; --akzent2-rgb: 120,60,200; }
+  /* WWM-Hintergrund: durchgehend lila mit Punkte-Raster (ueberschreibt
+     die geteilte hintergrund-host.css nur fuer diese Seite). */
+  body.host, .host body{
+    background-color:#211043 !important;
+    background:
+      radial-gradient(ellipse 100% 70% at 50% 0%, #3a2168 0%, transparent 70%),
+      radial-gradient(ellipse 100% 60% at 50% 100%, #301a5c 0%, transparent 75%),
+      linear-gradient(180deg, #2a1a4d 0%, #241547 50%, #23144a 100%) !important;
+  }
+  body.host::after{
+    content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+    background-image:radial-gradient(rgba(255,255,255,.07) 1px, transparent 1px);
+    background-size:22px 22px;
+  }
+  /* Die Hauptflaeche ist .stage - die geteilte CSS legt dort einen
+     dunklen Verlauf drueber. Fuer WWM lila mit Punkten ueberschreiben. */
+  .host .stage{
+    background:
+      radial-gradient(ellipse 100% 80% at 50% 0%, #3a2168 0%, transparent 70%),
+      radial-gradient(ellipse 100% 70% at 50% 100%, #301a5c 0%, transparent 78%),
+      linear-gradient(180deg, #2a1a4d 0%, #241547 55%, #23144a 100%) !important;
+  }
+  .host .stage::before{
+    content:'' !important;display:block !important;
+    position:absolute;inset:0;pointer-events:none;z-index:0;
+    background-image:radial-gradient(rgba(255,255,255,.075) 1px, transparent 1px);
+    background-size:22px 22px;
+  }
+  /* Vignette abschwaechen, damit die Punkte auch am Rand sichtbar bleiben */
+  .host .stage::after{ opacity:.35 !important; }
+  /* Inhalt ueber dem Punkte-Raster */
+  .stage > *{ position:relative; z-index:1; }
+</style>
+<link rel="stylesheet" href="../show-camera.css">
+<style id="v19-millionaer-camera-layout">
+  /* v19: Mit Kameras bleibt der komplette Antwortblock oberhalb der Kamera-Zone. */
+  body.ka-has-cameras .stage{
+    justify-content:flex-start !important;
+    margin-top:8px !important;
+    padding-bottom:220px !important;
+  }
+  body.ka-has-cameras .qframe{
+    transform:none !important;
+    margin-top:0 !important;
+  }
+</style>
+</head>
+<body class="host">
+  <img class="ka-top-logo" src="./host-logo.png" alt="" aria-hidden="true">
+
+  <div class="top">
+    <div class="logo">?WWM<span>?</span></div>
+    <div class="pills">
+      <div class="pill"><span class="ic"><svg viewBox="0 0 24 24" fill="none"><path d="M5 3v18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M5 4h13l-3 4 3 4H5z" fill="currentColor"/></svg></span><span id="roundPill">Runde –</span></div>
+      <div class="pill"><span class="ic"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3.4l2.55 5.17 5.7.83-4.13 4.02.98 5.68L12 16.42l-5.1 2.68.97-5.68L3.75 9.4l5.7-.83L12 3.4Z" fill="currentColor"/></svg></span><span id="valPill">– Punkte</span></div>
+    </div>
+  </div>
+
+  <div class="jokers">
+    <div class="joker" data-j="5050" id="hj5050">
+      <span class="who"></span>
+      <span class="in"><span class="badge"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.8"/><path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor"/></svg></span>50/50</span>
+    </div>
+    <div class="joker" data-j="spy" id="hjspy">
+      <span class="who"></span>
+      <span class="in"><span class="badge"><svg viewBox="0 0 24 24" fill="none"><path d="M2.5 12s3.6-6 9.5-6 9.5 6 9.5 6-3.6 6-9.5 6-9.5-6-9.5-6Z" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="2.6" fill="currentColor"/></svg></span>SPY</span>
+    </div>
+    <div class="joker" data-j="risk" id="hjrisk">
+      <span class="who"></span>
+      <span class="in"><span class="badge"><svg viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="16" rx="3.4" stroke="currentColor" stroke-width="1.8"/><circle cx="9" cy="9" r="1.5" fill="currentColor"/><circle cx="15" cy="15" r="1.5" fill="currentColor"/><circle cx="15" cy="9" r="1.5" fill="currentColor"/><circle cx="9" cy="15" r="1.5" fill="currentColor"/></svg></span>RISK</span>
+    </div>
+  </div>
+
+  <div class="stage" id="stage">
+    <div class="qframe" id="qframe">
+      <div class="qtext" id="qtext">Warte auf den Spielleiter…</div>
+      <div class="answers" id="answers"></div>
+    </div>
+  </div>
+
+  <div class="players" id="players"></div>
+  <div class="ladder" id="ladder"></div>
+
+<script>
+const sb = window.KA_SB;
+const LETTERS = ['A','B','C','D'];
+let state = null;
+let fxLetzterJoker = null;
+let fxLetzteAufloesung = null;
+
+const LEITER_STUFEN = Math.max(...WWM_FRAGEN.map((_, i) => wwmPunkte(i)));
+
+async function load(){
+  const { data } = await sb.from('wwm_state').select('state').eq('id',1).single();
+  state = data?.state || {};
+  state.players = state.players || {};
+  state.answers = state.answers || {};
+  state.usedJoker = state.usedJoker || null;
+  return state;
+}
+
+const JOKER_ICONS = {
+  '5050':'<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="2"/><path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor"/></svg>',
+  'spy':'<svg viewBox="0 0 24 24" fill="none"><path d="M2.5 12s3.6-6 9.5-6 9.5 6 9.5 6-3.6 6-9.5 6-9.5-6-9.5-6Z" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="2.6" fill="currentColor"/></svg>',
+  'risk':'<svg viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="16" rx="3.4" stroke="currentColor" stroke-width="2"/><circle cx="9" cy="9" r="1.6" fill="currentColor"/><circle cx="15" cy="15" r="1.6" fill="currentColor"/><circle cx="15" cy="9" r="1.6" fill="currentColor"/><circle cx="9" cy="15" r="1.6" fill="currentColor"/></svg>'
+};
+
+// Spielerliste ruhig verwalten - kein Neuaufbau bei jedem Render.
+const wwmSpielerListe = KernRender.liste(document.getElementById('players'), {
+  schluessel: p => p.name,
+  erstellen: p => {
+    const av = avatarFor(p.name);
+    const el = document.createElement('div');
+    el.className = 'p';
+    el.innerHTML = `
+      <span class="state"></span>
+      <span class="jks">${['5050','spy','risk'].map(t=>`<span class="j${t}">${JOKER_ICONS[t]}</span>`).join('')}</span>
+      ${av ? `<img src="${av}" alt="">` : ''}
+      <span class="info">
+        <span class="nm"></span>
+        <span class="pts"></span>
+      </span>`;
+    return el;
+  },
+  aktualisieren: (el, p) => {
+    el.className = `p ${p.__cardCls || ''}`;
+    const stateEl = el.querySelector('.state');
+    stateEl.className = `state ${p.__stateCls || ''}`;
+    KernRender.textWennGeaendert(stateEl, p.__stateTxt);
+    ['5050','spy','risk'].forEach(t => {
+      const jEl = el.querySelector('.j'+t);
+      const jetzt = p.__usedJoker && p.__usedJoker.name === p.name && p.__usedJoker.typ === t;
+      const spent = !p.jokers[t] && !jetzt;
+      jEl.className = 'j'+t + (spent?' spent':'') + (jetzt?' now':'');
+    });
+    KernRender.textWennGeaendert(el.querySelector('.nm'), p.name);
+    KernRender.textWennGeaendert(el.querySelector('.pts'), p.score);
+  }
+});
+
+function render(){
+  if(!state) return;
+
+  if(window.HOSTFX){
+    const uj = state.usedJoker;
+    const schluessel = uj ? `${uj.name}-${uj.typ}-${state.qIndex}` : null;
+    if(schluessel && schluessel !== fxLetzterJoker){
+      const NAMEN  = { '5050':'50/50', 'spy':'SPY', 'risk':'RISK' };
+      const FARBEN = { '5050':'#f5c542', 'spy':'#6c5ce7', 'risk':'#c44dff' };
+      HOSTFX.joker(uj.name, NAMEN[uj.typ] || 'JOKER', FARBEN[uj.typ], avatarFor(uj.name));
+    }
+    fxLetzterJoker = schluessel;
+  }
+
+  const qBereitsAufgeloest = (state.phase === 'aufgeloest');
+  const aufloeseSchluessel = qBereitsAufgeloest ? `aufgeloest-${state.qIndex}` : null;
+  const frameJustResolved = (aufloeseSchluessel && aufloeseSchluessel !== fxLetzteAufloesung);
+  if(window.HOSTFX && frameJustResolved){
+    HOSTFX.correct();
+  }
+  fxLetzteAufloesung = aufloeseSchluessel;
+
+  const q = (state.qIndex != null) ? WWM_FRAGEN[state.qIndex] : null;
+  const phase = state.phase || 'warten';
+  const aufgeloest = (phase === 'aufgeloest');
+
+  document.getElementById('roundPill').textContent =
+    q ? `Runde ${state.qIndex+1}` : 'Runde –';
+  document.getElementById('valPill').textContent =
+    q ? `${wwmPunkte(state.qIndex)} Punkte` : '– Punkte';
+
+  document.getElementById('qtext').textContent =
+    q ? q.frage : 'Warte auf den Spielleiter…';
+
+  if(frameJustResolved){
+    const frame = document.getElementById('qframe');
+    frame.classList.remove('reveal-good');
+    void frame.offsetWidth;
+    frame.classList.add('reveal-good');
+  }
+
+  renderLadder(q ? wwmPunkte(state.qIndex) : null);
+
+  const box = document.getElementById('answers');
+  box.innerHTML = !q ? '' : q.antworten.map((txt,i) => {
+    const cls = ['ans'];
+    if(aufgeloest){
+      if(i === q.richtig) cls.push('correct');
+      else cls.push('dim');
+    }
+    // Waehler-Avatare erst NACH dem Aufloesen anzeigen
+    let voters = '';
+    if(aufgeloest){
+      const waehler = Object.entries(state.answers).filter(([,a]) => a === i).map(([n]) => n);
+      if(waehler.length){
+        const imgs = waehler.slice(0,5).map(n => {
+          const av = avatarFor(n);
+          return av ? `<img src="${av}" alt="${n}">` : '';
+        }).join('');
+        voters = `<span class="voters"><span class="n">${waehler.length}</span>${imgs}</span>`;
+      }
+    }
+    return `<div class="${cls.join(' ')}">
+      <span class="key">${LETTERS[i]}:</span>
+      <span class="txt">${txt}</span>
+      ${voters}
+    </div>`;
+  }).join('');
+
+  [['5050','hj5050'], ['spy','hjspy'], ['risk','hjrisk']].forEach(([typ,id]) => {
+    const el = document.getElementById(id);
+    const live = state.usedJoker && state.usedJoker.typ === typ;
+    el.classList.toggle('live', !!live);
+    el.querySelector('.who').textContent = live ? state.usedJoker.name : '';
+  });
+
+  const namen = Object.keys(state.players);
+  const datensaetze = namen.map(n => {
+    const p = state.players[n];
+    const a = state.answers[n];
+
+    let stateCls = '', stateTxt = 'offen';
+    if(a != null){
+      if(aufgeloest && q){
+        const ok = (a === q.richtig);
+        stateCls = ok ? 'ok' : 'no';
+        stateTxt = `${LETTERS[a]} (${ok ? 'Correct' : 'Incorrect'})`;
+      } else {
+        stateCls = 'done';
+        stateTxt = 'geantwortet';
+      }
+    }
+
+    const cardCls = [];
+    if(aufgeloest && a != null && q){
+      cardCls.push(a === q.richtig ? 'correct' : 'wrong');
+    }
+
+    return Object.assign({}, p, {
+      name: n,
+      __stateCls: stateCls, __stateTxt: stateTxt,
+      __cardCls: cardCls.join(' '), __usedJoker: state.usedJoker
+    });
+  });
+  wwmSpielerListe.render(datensaetze);
+}
+
+async function tick(){ await load(); render(); }
+
+function renderLadder(currentStufe){
+  const el = document.getElementById('ladder');
+  el.innerHTML = Array.from({length: LEITER_STUFEN}, (_, idx) => {
+    const stufe = idx + 1;
+    let cls = 'rung';
+    if(currentStufe != null){
+      if(stufe === currentStufe) cls += ' now';
+      else if(stufe < currentStufe) cls += ' done';
+    }
+    return `<div class="${cls}"><span class="n">${stufe}</span></div>`;
+  }).join('');
+}
+
+tick();
+// Realtime mit Selbstheilung: bricht die Verbindung ab (Handy sperrt,
+// WLAN wechselt), wird neu verbunden und der verpasste Stand geholt.
+// Solange Realtime steht, laeuft nur ein sehr langsames Sicherheitsnetz
+// statt des frueheren Dauer-Pollings im Sekundentakt.
+if(window.KA_LIVE){
+  KA_LIVE.start({
+    client: sb,
+    tabelle: 'wwm_state',
+    laden: async function(){ await tick(); }
+  });
+} else {
+  setInterval(tick, 2000);
+}
+</script>
+<script src="../camera-config.js"></script>
+<script src="../stream-mode.js?v=48"></script>
+<script src="../show-camera.js?v=48"></script>
+<script src="../host-fx.js"></script>
+<script src="../buehne-skalieren.js"></script>
+
+<script>
+// Turnier: Rolle merken und auf Formatwechsel horchen.
+// Schaltet der Spielleiter weiter, springt dieses Geraet mit.
+if(window.TURNIER){
+  TURNIER.setzeRolle('host');
+  TURNIER.starte(typeof sb !== "undefined" ? sb : null);
+}
+</script>
+<script>
+(function(){
+})();
+</script>
+<script src="../active-stream-mode.js?v=48"></script>
+</body>
+</html>

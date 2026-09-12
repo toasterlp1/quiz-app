@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>Ausredenkönig — Buzzer</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@500;700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../live.js"></script>
+<script src="../eingabeschutz.js"></script>
+<script src="../public-client.js"></script>
+<script src="../crew.js"></script>
+
+<script src="../spieler-liste.js"></script>
+<style>
+  :root{
+    --bg:#07100c; --panel:#0d2318; --panel-border:#1c4030;
+    --ink:#eefaf2; --muted:#87b39c; --accent:#3ddc84; --gold:#ffc23d;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;}
+  body{
+    background:var(--bg);color:var(--ink);font-family:'Inter',sans-serif;
+    display:flex;align-items:center;justify-content:center;padding:20px;
+  }
+  .wrap{width:100%;max-width:460px;}
+  h1{font-family:'Anton',sans-serif;letter-spacing:2px;font-size:24px;text-align:center;margin:0 0 20px;}
+  .hinweis{
+    font-size:11px;text-transform:uppercase;letter-spacing:2px;
+    color:var(--accent);font-weight:800;text-align:center;margin-bottom:8px;
+  }
+  .frage{
+    font-family:'Anton',sans-serif;font-size:clamp(20px,5vw,27px);
+    line-height:1.35;text-align:center;margin-bottom:24px;
+  }
+  select, input[type=text], textarea{
+    width:100%;background:#081a12;border:1px solid var(--panel-border);color:var(--ink);
+    padding:14px;border-radius:12px;font-size:16px;margin-bottom:10px;
+    outline:none;font-family:'Inter',sans-serif;
+  }
+  select, input[type=text]{text-align:center;}
+  textarea{resize:none;line-height:1.4;text-align:left;}
+  select:focus, input[type=text]:focus, textarea:focus{border-color:var(--accent);}
+  button.gross{
+    width:100%;padding:15px;border:none;border-radius:12px;background:var(--accent);
+    color:#04140b;font-weight:900;font-size:16px;cursor:pointer;letter-spacing:1px;
+  }
+  button.gross:disabled{opacity:.4;cursor:not-allowed;}
+  .option{
+    background:var(--panel);border:2px solid var(--panel-border);border-radius:12px;
+    padding:15px;margin-bottom:10px;cursor:pointer;font-size:16px;font-weight:700;
+    transition:border-color .15s, background .15s;text-align:left;line-height:1.35;
+  }
+  .option:hover{border-color:var(--accent);}
+  .option.gewaehlt{border-color:var(--gold);background:rgba(255,194,61,.12);}
+  .option.eigene{opacity:.45;}
+  .info{color:var(--muted);text-align:center;padding:36px 0;font-size:15px;line-height:1.6;}
+  .info b{color:var(--ink);}
+  .zaehl{font-size:12px;color:var(--muted);text-align:right;margin:-4px 0 12px;}
+  .aufl{
+    background:var(--panel);border:1px solid var(--gold);border-radius:12px;
+    padding:18px;margin-top:14px;text-align:center;
+  }
+  .aufl .l{font-size:11px;text-transform:uppercase;letter-spacing:2px;color:var(--gold);font-weight:800;margin-bottom:6px;}
+  .aufl .w{font-family:'Anton',sans-serif;font-size:20px;line-height:1.3;}
+</style>
+<link rel="stylesheet" href="../responsive.css" />
+<link rel="stylesheet" href="../show-camera.css">
+</head>
+<body>
+<div class="wrap" id="app">
+  <div class="info">Warte auf Spielleiter…</div>
+</div>
+
+<script>
+const sb = window.KA_SB;
+const app = document.getElementById('app');
+
+let runde = null;
+let ich = sessionStorage.getItem('ak_name') || '';
+let meineAusrede = null;
+let meineStimme = null;
+
+const esc = s => String(s == null ? '' : s)
+  .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const mische = a => a.map(v => [Math.random(), v]).sort((x,y) => x[0]-y[0]).map(p => p[1]);
+
+function nameWahl(){
+  app.innerHTML =
+    '<h1>AUSREDENKÖNIG</h1>' +
+    '<div class="hinweis">Wer bist du?</div>' +
+    '<input id="sel" type="text" maxlength="32" autocomplete="nickname" placeholder="Dein Name" aria-label="Dein Name">' +
+    '<button class="gross" id="ok">Weiter</button>';
+  document.getElementById('ok').onclick = async () => {
+    const v = window.KA_PUBLIC.normalizeName(document.getElementById('sel').value);
+    if(!v) return;
+    const reg = await window.KA_PUBLIC.registerPlayer(v, 'ausreden');
+    if(!reg.ok) return;
+    ich = v;
+    sessionStorage.setItem('ak_name', v);
+    lade();
+  };
+  document.getElementById('sel').addEventListener('keydown', e => {
+    if(e.key === 'Enter') document.getElementById('ok').click();
+  });
+}
+
+async function lade(){
+  if(!sb) return;
+  if(!ich){ nameWahl(); return; }
+
+  const r = await sb.from('ausreden_runden')
+    .select('*').order('erstellt', { ascending:false }).limit(1).maybeSingle();
+  runde = r.data;
+
+  if(!runde){
+    app.innerHTML = '<div class="info">Warte auf den Spielleiter…<br><b>' + esc(ich) + '</b></div>';
+    return;
+  }
+
+  const ar = await sb.from('ausreden_texte').select('spieler,text').eq('runde_id', runde.id);
+  const ausreden = ar.data || [];
+  meineAusrede = (ausreden.find(a => a.spieler === ich) || {}).text || null;
+
+  const st = await sb.from('ausreden_stimmen').select('spieler,gewaehlt').eq('runde_id', runde.id);
+  const stimmen = st.data || [];
+  meineStimme = (stimmen.find(s => s.spieler === ich) || {}).gewaehlt || null;
+
+  if(runde.phase === 'schreiben') zeigeSchreiben();
+  else if(runde.phase === 'abstimmen') zeigeAbstimmen(ausreden);
+  else zeigeAufloesung(ausreden, stimmen);
+}
+
+function zeigeSchreiben(){
+  if(meineAusrede){
+    app.innerHTML =
+      '<div class="hinweis">Abgegeben</div>' +
+      '<div class="frage">' + esc(runde.situation) + '</div>' +
+      '<div class="aufl"><div class="l">Deine Ausrede</div><div class="w">' + esc(meineAusrede) + '</div></div>' +
+      '<div class="info">Warte auf die anderen…</div>';
+    return;
+  }
+  app.innerHTML =
+    '<div class="hinweis">Die Situation</div>' +
+    '<div class="frage">' + esc(runde.situation) + '</div>' +
+    '<textarea id="txt" rows="3" maxlength="140" placeholder="Deine Ausrede…"></textarea>' +
+    '<div class="zaehl" id="zaehl">0 / 140</div>' +
+    '<button class="gross" id="ok">Abgeben</button>';
+
+  const txt = document.getElementById('txt');
+  const zaehl = document.getElementById('zaehl');
+  txt.oninput = () => { zaehl.textContent = txt.value.length + ' / 140'; };
+  txt.focus();
+
+  document.getElementById('ok').onclick = async () => {
+    const v = txt.value.trim();
+    if(!v) return;
+    document.getElementById('ok').disabled = true;
+    await sb.from('ausreden_texte').insert({ runde_id:runde.id, spieler:ich, text:v });
+    lade();
+  };
+}
+
+function zeigeAbstimmen(ausreden){
+  if(meineStimme){
+    app.innerHTML =
+      '<div class="hinweis">Stimme abgegeben</div>' +
+      '<div class="frage">' + esc(runde.situation) + '</div>' +
+      '<div class="aufl"><div class="l">Deine Wahl</div><div class="w">' + esc(meineStimme) + '</div></div>' +
+      '<div class="info">Warte auf die anderen…</div>';
+    return;
+  }
+  const liste = mische(ausreden.slice());
+  app.innerHTML =
+    '<div class="hinweis">Welche Ausrede ist die beste?</div>' +
+    '<div class="frage">' + esc(runde.situation) + '</div>' +
+    liste.map(a => {
+      const eigen = a.spieler === ich;
+      return '<div class="option' + (eigen ? ' eigene' : '') + '"' +
+        (eigen ? '' : ' data-text="' + esc(a.text) + '"') + '>' +
+        esc(a.text) + (eigen ? ' <span style="color:var(--muted);font-size:12px;">(deine)</span>' : '') +
+        '</div>';
+    }).join('');
+
+  app.querySelectorAll('.option[data-text]').forEach(el => {
+    el.onclick = async () => {
+      app.querySelectorAll('.option').forEach(o => o.style.pointerEvents = 'none');
+      el.classList.add('gewaehlt');
+      await sb.from('ausreden_stimmen').insert({
+        runde_id:runde.id, spieler:ich, gewaehlt:el.getAttribute('data-text')
+      });
+      lade();
+    };
+  });
+}
+
+function zeigeAufloesung(ausreden, stimmen){
+  const zaehlung = {};
+  stimmen.forEach(s => {
+    const k = String(s.gewaehlt).toLowerCase();
+    zaehlung[k] = (zaehlung[k] || 0) + 1;
+  });
+  let max = 0;
+  Object.values(zaehlung).forEach(v => { if(v > max) max = v; });
+  const sieger = ausreden.filter(a => (zaehlung[a.text.toLowerCase()] || 0) === max && max > 0);
+
+  app.innerHTML =
+    '<div class="hinweis">Auflösung</div>' +
+    '<div class="frage">' + esc(runde.situation) + '</div>' +
+    (sieger.length
+      ? sieger.map(s =>
+          '<div class="aufl"><div class="l">Beste Ausrede — ' + esc(s.spieler) + '</div>' +
+          '<div class="w">' + esc(s.text) + '</div></div>').join('')
+      : '<div class="info">Keine Stimmen abgegeben.</div>') +
+    '<div class="info">Warte auf die nächste Runde…</div>';
+}
+
+if(sb){
+  lade();
+// Realtime mit Selbstheilung: bricht die Verbindung ab (Handy sperrt,
+// WLAN wechselt), wird neu verbunden und der verpasste Stand geholt.
+// Solange Realtime steht, laeuft nur ein sehr langsames Sicherheitsnetz
+// statt des frueheren Dauer-Pollings im Sekundentakt.
+if(window.KA_LIVE){
+  KA_LIVE.start({
+    client: sb,
+    tabelle: 'ausreden_runden',
+    laden: async function(){ await lade(); }
+  });
+} else {
+  setInterval(lade, 2000);
+}
+}
+</script>
+<script src="../zurueck.js"></script>
+
+<script>
+// Turnier: Rolle merken und auf Formatwechsel horchen.
+// Schaltet der Spielleiter weiter, springt dieses Geraet mit.
+if(window.TURNIER){
+  TURNIER.setzeRolle('buzzer');
+  TURNIER.starte(typeof sb !== "undefined" ? sb : null);
+}
+</script>
+
+
+<script src="../camera-config.js"></script>
+<script src="../show-camera.js?v=48"></script>
+</body>
+</html>

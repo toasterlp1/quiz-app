@@ -1,0 +1,44 @@
+/* ============================================================
+   KERN-KORREKTUR.CSS — dezentes, einklappbares Eingriffs-Panel
+   ============================================================
+   Bewusst unauffaellig: das ist Werkzeug fuer Ausnahmefaelle,
+   nicht Teil der normalen Bedienung. Sitzt am Ende des
+   Spielleiter-Panels, standardmaessig eingeklappt.
+   ============================================================ */
+
+.kk-toggle{
+  width:100%;display:flex;align-items:center;gap:8px;
+  padding:10px 14px;margin-top:18px;
+  background:transparent;border:1px dashed #2a3348;border-radius:10px;
+  color:#6b7690;font-size:13px;font-weight:600;cursor:pointer;
+  transition:border-color .2s ease,color .2s ease,background .2s ease;
+}
+.kk-toggle:hover,.kk-toggle.offen{
+  border-color:#3d4a68;color:#9aa6c4;background:rgba(255,255,255,.02);
+}
+.kk-toggle .kk-icon{font-size:15px;opacity:.7;}
+
+.kk-body{
+  margin-top:8px;padding:14px;border-radius:10px;
+  background:#0d1220;border:1px solid #1c2338;
+  animation:kkAufklappen .18s ease;
+}
+@keyframes kkAufklappen{from{opacity:0;transform:translateY(-4px);}to{opacity:1;transform:translateY(0);}}
+
+.kk-row{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.kk-lbl{font-size:12px;color:#6b7690;min-width:40px;}
+.kk-chip{
+  padding:6px 12px;border-radius:8px;background:#161d33;border:1px solid #232b45;
+  color:#c7cfe6;font-size:12.5px;font-weight:700;cursor:pointer;
+  transition:background .15s ease,border-color .15s ease;
+}
+.kk-chip:hover{background:#1c2540;border-color:#2f3a5c;}
+.kk-plus{color:#4ade80;}
+.kk-minus{color:#f87171;}
+
+.kk-punkte-row{
+  display:flex;align-items:center;gap:8px;padding:6px 0;
+  border-top:1px solid #161d33;
+}
+.kk-punkte-row:first-child{border-top:none;}
+.kk-punkte-row .kk-name{flex:1;font-size:13px;color:#c7cfe6;font-weight:600;}

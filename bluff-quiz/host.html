@@ -1,0 +1,631 @@
+<!doctype html>
+<html class="host" lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>Bluff-Quiz — Host</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../public-client.js"></script>
+
+<script src="../crew.js"></script>
+<script src="../host-fx.js"></script>
+<style>
+  /* Handy-Skalierung: Bezugsgroesse wechselt hochkant auf die Hoehe */
+  :root{ --u: 1vw; }
+  @media (max-width:900px) and (orientation:portrait){
+    :root{ --u: 0.62vh; }
+    html.host, body.host{ height:auto; min-height:100%; overflow-y:auto; overflow-x:hidden; }
+  }
+  @media (max-width:900px) and (orientation:portrait) and (min-aspect-ratio:3/5){
+    :root{ --u: 0.72vh; }
+  }
+  @media (max-height:520px) and (orientation:landscape){
+    :root{ --u: 1.35vh; }
+  }
+
+  :root{
+    --bg-0:#080611;
+    --bg-1:#140a26;
+    --panel:#150e28;
+    --panel-2:#1b1233;
+    --border:rgba(168,85,247,.22);
+    --violet:#a855f7;
+    --violet-soft:rgba(168,85,247,.14);
+    --truth:#3ee6a0;
+    --truth-soft:rgba(62,230,160,.14);
+    --lie:#ff3d68;
+    --lie-soft:rgba(255,61,104,.12);
+    --gold:#ffc23d;
+    --ink:#f4eefc;
+    --muted:#9d8fc0;
+    --font-display:'Anton',sans-serif;
+    --font-ui:'Chakra Petch',sans-serif;
+    --font-body:'Inter',sans-serif;
+    --ease:cubic-bezier(.22,.9,.32,1);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{
+    width:calc(100 * var(--u));height:100vh;overflow:hidden;color:var(--ink);
+    font-family:var(--font-body);
+    background:
+      radial-gradient(ellipse at 50% -8%, rgba(168,85,247,.28), transparent 55%),
+      radial-gradient(ellipse at 12% 108%, rgba(255,61,104,.10), transparent 46%),
+      radial-gradient(ellipse at 88% 108%, rgba(62,230,160,.09), transparent 46%),
+      linear-gradient(180deg, var(--bg-0), var(--bg-1));
+  }
+
+  .stage{
+    position:relative;width:calc(100 * var(--u));height:100vh;
+    display:flex;flex-direction:column;align-items:center;
+    padding:3.4vh calc(4 * var(--u)) 3.6vh;
+  }
+
+  .orbs{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none;}
+  .orbs span{position:absolute;border-radius:50%;filter:blur(90px);will-change:transform;opacity:.55;}
+  .orbs .o1{width:calc(40 * var(--u));height:calc(40 * var(--u));top:calc(-8 * var(--u));left:calc(-6 * var(--u));
+    background:radial-gradient(circle,rgba(168,85,247,.6),transparent 68%);
+    animation:driftA 24s var(--ease) infinite alternate;}
+  .orbs .o2{width:calc(34 * var(--u));height:calc(34 * var(--u));bottom:calc(-10 * var(--u));right:calc(-4 * var(--u));
+    background:radial-gradient(circle,rgba(255,61,104,.42),transparent 68%);
+    animation:driftB 28s var(--ease) infinite alternate;}
+  .orbs .o3{width:calc(32 * var(--u));height:calc(32 * var(--u));bottom:calc(-12 * var(--u));left:calc(32 * var(--u));
+    background:radial-gradient(circle,rgba(62,230,160,.34),transparent 70%);
+    animation:driftC 32s var(--ease) infinite alternate;}
+  @keyframes driftA{0%{transform:translate(0,0) scale(1);}50%{transform:translate(calc(14 * var(--u)),calc(10 * var(--u))) scale(1.16);}100%{transform:translate(calc(3 * var(--u)),calc(18 * var(--u))) scale(.92);}}
+  @keyframes driftB{0%{transform:translate(0,0) scale(1);}50%{transform:translate(calc(-12 * var(--u)),calc(-9 * var(--u))) scale(1.14);}100%{transform:translate(calc(-18 * var(--u)),calc(2 * var(--u))) scale(.95);}}
+  @keyframes driftC{0%{transform:translate(0,0) scale(1);}50%{transform:translate(0,calc(-6 * var(--u))) scale(1.22);}100%{transform:translate(0,calc(5 * var(--u))) scale(.9);}}
+
+  .ambient{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:1;}
+  .mask-float{position:absolute;bottom:-8vh;color:var(--violet);opacity:0;filter:drop-shadow(0 0 10px rgba(168,85,247,.5));animation:rise linear infinite;}
+  @keyframes rise{
+    0%{transform:translateY(0) rotate(-8deg);opacity:0;}
+    10%{opacity:.28;}
+    90%{opacity:.2;}
+    100%{transform:translateY(-118vh) rotate(10deg);opacity:0;}
+  }
+
+  @keyframes riseIn{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);}}
+  @keyframes popIn{0%{opacity:0;transform:scale(.82) translateY(14px);}60%{transform:scale(1.04) translateY(0);}100%{opacity:1;transform:scale(1);}}
+  @media (prefers-reduced-motion: reduce){
+    *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;}
+  }
+
+  .head{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;margin-bottom:2.2vh;animation:riseIn .6s var(--ease) both;}
+  .logo{
+    position:relative;display:inline-flex;align-items:center;gap:calc(.7 * var(--u));
+    font-family:var(--font-display);
+    font-size:calc(6.2 * var(--u));line-height:.9;letter-spacing:2px;
+    background:linear-gradient(103deg,
+      var(--truth) 0%, #b6f5da 34%,
+      #e9d5ff 47%, var(--violet) 53%,
+      #ffb3c6 66%, var(--lie) 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    filter:drop-shadow(0 0 26px rgba(168,85,247,.5));
+  }
+  .logo em{font-style:normal;color:var(--lie);-webkit-text-fill-color:var(--lie);}
+
+  /* Masken-Symbol: halb Wahrheit, halb Luege */
+  .logo .maske{
+    width:calc(4.2 * var(--u));height:calc(4.2 * var(--u));flex-shrink:0;
+    filter:drop-shadow(0 0 16px rgba(255,61,104,.6));
+    animation:maskeKipp 4.6s ease-in-out infinite;
+  }
+  .logo .maske svg{width:100%;height:100%;display:block;}
+  @keyframes maskeKipp{
+    0%,100%{transform:rotate(-5deg) translateY(0);}
+    50%{transform:rotate(5deg) translateY(-4px);}
+  }
+
+  /* Trennblitz zwischen Wahrheit und Luege */
+  .logo .riss{
+    position:absolute;left:50%;top:-8%;height:116%;width:calc(.34 * var(--u));
+    transform:translateX(-50%) skewX(-11deg);
+    background:linear-gradient(180deg,transparent,rgba(255,255,255,.8) 22%,rgba(255,255,255,.8) 78%,transparent);
+    opacity:.5;pointer-events:none;
+    animation:rissFlacker 3.2s ease-in-out infinite;
+  }
+  @keyframes rissFlacker{0%,100%{opacity:.28;}45%{opacity:.75;}}
+  .tag{
+    font-family:var(--font-ui);font-weight:600;font-size:calc(1.05 * var(--u));letter-spacing:5px;
+    text-transform:uppercase;color:var(--muted);margin-top:.6vh;
+  }
+
+  .frage{
+    position:relative;z-index:2;max-width:calc(82 * var(--u));text-align:center;
+    font-family:var(--font-display);font-size:calc(2.9 * var(--u));line-height:1.18;
+    margin-bottom:2.6vh;
+  }
+  .frage .luecke{color:var(--violet);}
+  .frage{animation:riseIn .6s var(--ease) .1s both;}
+
+  .grid{
+    position:relative;z-index:2;width:100%;max-width:calc(80 * var(--u));flex:1;min-height:0;
+    display:grid;grid-template-columns:1fr 1fr;gap:1.6vh calc(1.8 * var(--u));align-content:center;
+  }
+  .karte{
+    position:relative;overflow:hidden;
+    background:linear-gradient(160deg,var(--panel-2),var(--panel));
+    border:2px solid var(--border);border-radius:18px;
+    padding:2.6vh calc(2 * var(--u));display:flex;align-items:center;gap:calc(1.4 * var(--u));
+    box-shadow:0 16px 40px -22px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.04);
+    transition:transform .45s var(--ease), border-color .45s var(--ease), opacity .45s var(--ease), box-shadow .45s var(--ease);
+    animation:popIn .5s var(--ease) both;
+  }
+  .grid .karte:nth-child(1){animation-delay:.12s;}
+  .grid .karte:nth-child(2){animation-delay:.20s;}
+  .grid .karte:nth-child(3){animation-delay:.28s;}
+  .grid .karte:nth-child(4){animation-delay:.36s;}
+  .grid .karte:nth-child(5){animation-delay:.44s;}
+  .grid .karte:nth-child(6){animation-delay:.52s;}
+  .grid .karte:nth-child(7){animation-delay:.60s;}
+  .grid .karte:nth-child(8){animation-delay:.68s;}
+  .karte .siegel{
+    flex-shrink:0;width:calc(3 * var(--u));height:calc(3 * var(--u));border-radius:12px;
+    display:flex;align-items:center;justify-content:center;
+    background:var(--violet-soft);border:1.5px solid var(--border);color:var(--violet);
+    transition:all .45s var(--ease);
+  }
+  .karte .siegel svg{width:60%;height:60%;}
+  .karte .body{flex:1;min-width:0;}
+  .karte .txt{font-size:calc(1.9 * var(--u));font-weight:800;line-height:1.22;}
+  .karte .autor{
+    font-family:var(--font-ui);font-size:calc(.95 * var(--u));font-weight:600;letter-spacing:1.5px;
+    text-transform:uppercase;color:var(--muted);
+    max-height:0;opacity:0;overflow:hidden;transition:all .45s var(--ease);
+  }
+  .karte .stimmen{display:flex;gap:calc(.35 * var(--u));flex-shrink:0;}
+  .karte .stimmen img{
+    width:calc(2.5 * var(--u));height:calc(2.5 * var(--u));border-radius:50%;object-fit:cover;
+    border:2px solid var(--panel);background:var(--bg-0);
+    box-shadow:0 0 0 1px var(--border);
+  }
+
+  .karte.zeigen .autor{opacity:1;max-height:3vh;margin-top:.5vh;}
+  .karte.zeigen.lie{opacity:.5;border-color:rgba(255,61,104,.4);}
+  .karte.zeigen.lie .siegel{background:var(--lie-soft);border-color:var(--lie);color:var(--lie);}
+  .karte.zeigen.lie .autor{color:var(--lie);}
+  .karte.zeigen.truth{
+    border-color:var(--truth);
+    background:linear-gradient(160deg,rgba(62,230,160,.16),var(--panel));
+    box-shadow:0 0 60px -14px var(--truth), inset 0 1px 0 rgba(255,255,255,.06);
+    transform:scale(1.03);
+  }
+  .karte.zeigen.truth .siegel{background:var(--truth-soft);border-color:var(--truth);color:var(--truth);}
+  .karte.zeigen.truth .autor{color:var(--truth);}
+
+  .lobby{position:relative;z-index:2;flex:1;display:flex;flex-wrap:wrap;align-content:center;justify-content:center;gap:calc(2.6 * var(--u)) calc(2.2 * var(--u));}
+  .spieler{display:flex;flex-direction:column;align-items:center;gap:1vh;opacity:.4;transition:opacity .45s var(--ease);animation:popIn .5s var(--ease) both;}
+  .lobby .spieler:nth-child(1){animation-delay:.14s;}
+  .lobby .spieler:nth-child(2){animation-delay:.20s;}
+  .lobby .spieler:nth-child(3){animation-delay:.26s;}
+  .lobby .spieler:nth-child(4){animation-delay:.32s;}
+  .lobby .spieler:nth-child(5){animation-delay:.38s;}
+  .lobby .spieler:nth-child(6){animation-delay:.44s;}
+  .lobby .spieler:nth-child(7){animation-delay:.50s;}
+  .lobby .spieler:nth-child(8){animation-delay:.56s;}
+  .spieler.fertig{opacity:1;}
+  .spieler .ring{
+    position:relative;width:calc(6.4 * var(--u));height:calc(6.4 * var(--u));border-radius:50%;padding:calc(.35 * var(--u));
+    background:var(--panel-2);border:calc(.28 * var(--u)) solid var(--border);transition:all .45s var(--ease);
+  }
+
+  .spieler:not(.fertig) .ring{animation:denk 2.6s ease-in-out infinite;}
+  @keyframes denk{
+    0%,100%{box-shadow:0 0 0 0 rgba(168,85,247,0);border-color:var(--border);}
+    50%{box-shadow:0 0 22px -6px rgba(168,85,247,.6);border-color:rgba(168,85,247,.5);}
+  }
+
+  .spieler .ring::before{
+    content:'';position:absolute;inset:calc(-.28 * var(--u));border-radius:50%;z-index:0;
+    background:conic-gradient(from 0deg, transparent 0 70%, rgba(168,85,247,.9) 85%, transparent 100%);
+    opacity:0;transition:opacity .4s var(--ease);animation:spin 3.4s linear infinite;
+  }
+  .spieler:not(.fertig) .ring::before{opacity:.7;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .spieler.fertig .ring{
+    border-color:var(--truth);
+    box-shadow:0 0 26px -6px var(--truth);
+    animation:fertigPop .45s var(--ease);
+  }
+  @keyframes fertigPop{0%{transform:scale(1);}45%{transform:scale(1.12);}100%{transform:scale(1);}}
+  .spieler .ring img{position:relative;z-index:1;width:100%;height:100%;border-radius:50%;object-fit:cover;background:var(--bg-0);}
+  .spieler .haken{
+    position:absolute;right:calc(-.3 * var(--u));bottom:calc(-.3 * var(--u));width:calc(2 * var(--u));height:calc(2 * var(--u));border-radius:50%;
+    background:var(--truth);color:var(--bg-0);display:none;align-items:center;justify-content:center;
+    border:calc(.22 * var(--u)) solid var(--bg-1);
+  }
+  .spieler.fertig .haken{display:flex;}
+  .spieler .haken svg{width:56%;height:56%;}
+  .spieler .n{font-family:var(--font-ui);font-weight:600;font-size:calc(1.05 * var(--u));letter-spacing:1px;text-transform:uppercase;}
+
+  .fuss{
+    position:relative;z-index:2;width:100%;max-width:calc(80 * var(--u));margin-top:2.4vh;
+    display:flex;justify-content:space-between;align-items:center;
+  }
+  .phase-pill{
+    display:inline-flex;align-items:center;gap:calc(.7 * var(--u));
+    font-family:var(--font-ui);font-weight:700;font-size:calc(1.05 * var(--u));letter-spacing:1.5px;text-transform:uppercase;
+    padding:.9vh calc(1.4 * var(--u));border-radius:999px;
+    background:var(--violet-soft);border:1.5px solid var(--violet);color:var(--violet);
+    box-shadow:0 0 22px -6px var(--violet);
+  }
+  .phase-pill.truth{background:var(--truth-soft);border-color:var(--truth);color:var(--truth);box-shadow:0 0 22px -6px var(--truth);}
+  .phase-pill .dot{width:calc(.6 * var(--u));height:calc(.6 * var(--u));border-radius:50%;background:currentColor;animation:blink 1.4s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1;}50%{opacity:.3;}}
+  .zaehler{font-family:var(--font-ui);font-weight:600;font-size:calc(1.1 * var(--u));letter-spacing:1px;color:var(--muted);}
+  .zaehler b{color:var(--ink);}
+
+  .aufl-antwort{
+    position:relative;z-index:2;width:100%;max-width:calc(80 * var(--u));margin-top:1.8vh;
+    background:linear-gradient(90deg,var(--truth-soft),transparent);
+    border-left:calc(.35 * var(--u)) solid var(--truth);border-radius:14px;padding:2.2vh calc(2 * var(--u));
+  }
+  .aufl-antwort .l{font-family:var(--font-ui);font-weight:700;font-size:calc(1 * var(--u));letter-spacing:2px;text-transform:uppercase;color:var(--truth);margin-bottom:.5vh;}
+  .aufl-antwort .w{font-family:var(--font-display);font-size:calc(2.6 * var(--u));line-height:1.1;}
+
+  .scoreboard{
+    position:relative;z-index:2;width:100%;max-width:calc(80 * var(--u));margin-top:1.6vh;
+    display:flex;flex-wrap:wrap;justify-content:center;gap:calc(.7 * var(--u));
+  }
+  .score-pill{
+    display:inline-flex;align-items:center;gap:calc(.6 * var(--u));
+    padding:.7vh calc(.9 * var(--u)) .7vh calc(.55 * var(--u));border-radius:999px;
+    background:rgba(255,255,255,.04);border:1.5px solid var(--border);
+    transition:all .4s var(--ease);
+  }
+  .score-pill img{width:calc(2 * var(--u));height:calc(2 * var(--u));border-radius:50%;object-fit:cover;background:var(--bg-0);}
+  .score-pill .sn{font-family:var(--font-ui);font-weight:600;font-size:calc(1 * var(--u));letter-spacing:.5px;color:var(--ink);}
+  .score-pill .sp{
+    font-family:var(--font-display);font-size:calc(1.3 * var(--u));color:var(--violet);
+    min-width:calc(1.4 * var(--u));text-align:right;line-height:1;
+  }
+  .score-pill.fuehrt{
+    border-color:var(--gold);background:rgba(255,194,61,.10);
+    box-shadow:0 0 22px -8px var(--gold);
+  }
+  .score-pill.fuehrt .sp{color:var(--gold);}
+  .score-pill .plus{
+    font-family:var(--font-ui);font-weight:700;font-size:calc(.85 * var(--u));color:var(--truth);
+    margin-left:calc(-.2 * var(--u));
+  }
+
+  .warten{
+    position:relative;z-index:2;flex:1;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:2vh;
+  }
+  .warten .big{font-family:var(--font-display);font-size:calc(3.4 * var(--u));color:var(--muted);letter-spacing:2px;}
+  .warten .small{font-family:var(--font-ui);font-size:calc(1.2 * var(--u));letter-spacing:3px;text-transform:uppercase;color:var(--violet);opacity:.7;}
+
+  .hidden{display:none !important;}
+
+/* KLAPSEN — premium format thumbnail at the top-center */
+.ka-top-logo{
+  position:fixed; left:50%; top:0; transform:translateX(-50%);
+  width:auto; height:auto; max-width:min(420px, calc(100vw - 24px));
+  max-height:clamp(100px, 16.7vh, 180px);
+  object-fit:contain; object-position:center top;
+  z-index:9999; pointer-events:none; user-select:none;
+  filter:drop-shadow(0 10px 24px rgba(0,0,0,.55));
+}
+:root{ --ka-logo-space:calc(clamp(100px, 16.7vh, 180px) + 18px); }
+@media (max-width:900px){
+  .ka-top-logo{max-width:min(300px, calc(100vw - 18px)); max-height:clamp(88px, 15vh, 120px);}
+  :root{ --ka-logo-space:calc(clamp(88px, 15vh, 120px) + 14px); }
+}
+@media (max-width:560px){
+  .ka-top-logo{max-width:260px;}
+}
+
+.stage{padding-top:var(--ka-logo-space) !important;}
+.stage > .head{display:none !important;}
+</style>
+<link rel="stylesheet" href="../responsive.css" />
+<link rel="stylesheet" href="../hintergrund-host.css" />
+<style>:root{ --akzent-rgb: 255,194,61; --akzent2-rgb: 210,60,60; }</style>
+<link rel="stylesheet" href="../show-camera.css">
+</head>
+<body class="host">
+<div class="orbs" aria-hidden="true"><span class="o1"></span><span class="o2"></span><span class="o3"></span></div>
+<div class="stage" id="stage">
+  <img class="ka-top-logo" src="./host-logo.png" alt="" aria-hidden="true">
+  <div class="ambient" id="ambient"></div>
+  <div class="warten">
+    <div class="small">Bluff-Quiz</div>
+    <div class="big">Warte auf Runde…</div>
+  </div>
+</div>
+
+<script>
+const sb = window.KA_SB;
+const stage = document.getElementById('stage');
+
+let reihenfolge = null;
+let letzteRunde = null;
+
+const mische = a => a.map(v => [Math.random(), v]).sort((x,y) => x[0]-y[0]).map(p => p[1]);
+const bild = n => (typeof avatarFor === 'function' && avatarFor(n)) || '';
+const crew = () => crewNames();
+window.addEventListener('ka-crew-ready', () => { try { zeichne(); } catch(e) {} });
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+const frageHtml = f => esc(f).replace(/_{2,}/g, '<span class="luecke">_____</span>');
+
+const SIEGEL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>';
+const HAKEN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
+const MASKE = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.5 5c-2.5 0-4.5 1-6 2.2C13 6 11 5 8.5 5 5 5 2 7.5 2 11.5 2 15 4.5 18 8 18c2 0 3.2-1.2 4-2.5.8 1.3 2 2.5 4 2.5 3.5 0 6-3 6-6.5C22 7.5 21.5 5 20.5 5ZM7.5 14C6 14 5 12.8 5 11.3 5 10 6 9 7.3 9c1.4 0 2.7 1 2.7 2.5C10 13 9 14 7.5 14Z"/></svg>';
+
+function baueAmbient(){
+  const amb = document.getElementById('ambient');
+  if(!amb || amb.childElementCount) return;
+  for(let i=0;i<10;i++){
+    const m = document.createElement('div');
+    m.className = 'mask-float';
+    const size = 2.4 + Math.random()*2.6;
+    m.style.width = size+'vw';
+    m.style.height = size+'vw';
+    m.style.left = (Math.random()*96)+'vw';
+    m.style.animationDuration = (16+Math.random()*14)+'s';
+    m.style.animationDelay = (-Math.random()*24)+'s';
+    m.innerHTML = MASKE;
+    amb.appendChild(m);
+  }
+}
+
+let aktRundeId = null;
+let aktPhase = null;
+let aktAufgedeckt = null;
+
+async function zeichne(){
+  if(!sb) return;
+
+  const r = await sb.from('bluff_runden')
+    .select('*').order('erstellt', { ascending:false }).limit(1).maybeSingle();
+  const runde = r.data;
+
+  if(!runde){
+    if(aktRundeId !== 'idle'){
+      stage.innerHTML =
+        '<div class="ambient" id="ambient"></div>' +
+        '<div class="warten"><div class="small">Bluff-Quiz</div><div class="big">Warte auf Runde…</div></div>';
+      baueAmbient();
+      aktRundeId = 'idle'; aktPhase = null; aktAufgedeckt = null;
+    }
+    return;
+  }
+  if(runde.id !== letzteRunde){ reihenfolge = null; letzteRunde = runde.id; }
+
+  const lg = await sb.from('bluff_luegen').select('spieler,text').eq('runde_id', runde.id);
+  const st = await sb.from('bluff_stimmen').select('spieler,gewaehlt,ist_echt').eq('runde_id', runde.id);
+  const luegen = lg.data || [];
+  const stimmen = st.data || [];
+
+  const ges = {};
+  const bl = await sb.from('ergebnisse').select('spieler,punkte').eq('format', 'bluff-quiz');
+  (bl.data || []).forEach(row => { ges[row.spieler] = (ges[row.spieler] || 0) + row.punkte; });
+
+  const rundePunkte = {};
+  if(runde.phase !== 'ende'){
+    stimmen.forEach(s => {
+      if(s.ist_echt){
+        rundePunkte[s.spieler] = (rundePunkte[s.spieler] || 0) + 2;
+      } else {
+        // Falls zwei dieselbe Luege eingetragen haben, bekommen BEIDE
+        // den Punkt - vorher zaehlte nur der erste Treffer.
+        luegen
+          .filter(l => l.text.toLowerCase() === s.gewaehlt.toLowerCase())
+          .filter(l => l.spieler !== s.spieler)
+          .forEach(l => {
+            rundePunkte[l.spieler] = (rundePunkte[l.spieler] || 0) + 1;
+          });
+      }
+    });
+  }
+  const zeigeRunde = (runde.phase === 'aufloesung' || runde.phase === 'ende');
+
+  const neuBauen = (runde.id !== aktRundeId) || (runde.phase !== aktPhase) || (runde.aufgedeckt !== aktAufgedeckt);
+
+  if(neuBauen){
+    baueGeruest(runde, luegen, stimmen);
+    aktRundeId = runde.id; aktPhase = runde.phase; aktAufgedeckt = runde.aufgedeckt;
+  }
+
+  patchLobby(luegen);
+  patchStimmen(luegen, stimmen, runde);
+  patchZaehler(runde, luegen, stimmen);
+  patchScoreboard(ges, rundePunkte, zeigeRunde);
+}
+
+function baueGeruest(runde, luegen, stimmen){
+  const kopf =
+    '<div class="ambient" id="ambient"></div>' +
+    '<div class="head"><div class="logo">' +
+      '<span class="maske"><svg viewBox="0 0 48 48" fill="none">' +
+        '<path d="M24 5 C13 5 6 11 6 20 c0 11 9 21 18 23 9-2 18-12 18-23 0-9-7-15-18-15Z" fill="#3ee6a0" opacity=".92"/>' +
+        '<path d="M24 5 c11 0 18 6 18 15 0 11-9 21-18 23V5Z" fill="#ff3d68" opacity=".92"/>' +
+        '<circle cx="17" cy="21" r="2.6" fill="#07120d"/><circle cx="31" cy="21" r="2.6" fill="#2b0710"/>' +
+        '<path d="M16 31 q8 5 16 0" stroke="#07120d" stroke-width="2.2" stroke-linecap="round" fill="none"/>' +
+      '</svg></span>' +
+      'BLUFF<em>-</em>QUIZ<span class="riss"></span></div>' +
+    '<div class="tag">Wahrheit oder Lüge</div></div>' +
+    '<div class="frage">' + frageHtml(runde.frage) + '</div>';
+
+  if(runde.phase === 'luegen'){
+    stage.innerHTML = kopf +
+      '<div class="lobby" id="lobby">' +
+        crew().map(n =>
+          '<div class="spieler" data-name="' + esc(n) + '">' +
+            '<div class="ring"><img src="' + bild(n) + '" alt="">' +
+            '<div class="haken">' + HAKEN + '</div></div>' +
+            '<div class="n">' + esc(n) + '</div>' +
+          '</div>'
+        ).join('') +
+      '</div>' +
+      '<div class="fuss">' +
+        '<span class="phase-pill"><span class="dot"></span>Erfindet eure Lügen</span>' +
+        '<span class="zaehler" id="zaehler"></span>' +
+      '</div>' +
+      '<div id="scoreboard-slot"></div>';
+    baueAmbient();
+    return;
+  }
+
+  if(!reihenfolge){
+    reihenfolge = mische(
+      [{ text:runde.echte_antwort, echt:true, autor:null }]
+      .concat(luegen.map(l => ({ text:l.text, echt:false, autor:l.spieler })))
+    );
+  }
+  const auf = runde.aufgedeckt === true;
+
+  const karten = reihenfolge.map(o => {
+    const klasse = 'karte' + (auf ? (' zeigen ' + (o.echt ? 'truth' : 'lie')) : '');
+    const autor = o.echt ? 'Echte Antwort' : ('Lüge von ' + esc(o.autor));
+    return '<div class="' + klasse + '" data-text="' + esc(o.text.toLowerCase()) + '">' +
+        '<div class="siegel">' + SIEGEL + '</div>' +
+        '<div class="body">' +
+          '<div class="txt">' + esc(o.text) + '</div>' +
+          '<div class="autor">' + autor + '</div>' +
+        '</div>' +
+        '<div class="stimmen"></div>' +
+      '</div>';
+  }).join('');
+
+  if(runde.phase === 'raten'){
+    stage.innerHTML = kopf +
+      '<div class="grid" id="grid">' + karten + '</div>' +
+      '<div class="fuss">' +
+        '<span class="phase-pill"><span class="dot"></span>Wer sagt die Wahrheit?</span>' +
+        '<span class="zaehler" id="zaehler"></span>' +
+      '</div>' +
+      '<div id="scoreboard-slot"></div>';
+    baueAmbient();
+    return;
+  }
+
+  stage.innerHTML = kopf +
+    '<div class="grid" id="grid">' + karten + '</div>' +
+    '<div class="aufl-antwort"><div class="l">Echte Antwort</div>' +
+    '<div class="w">' + esc(runde.echte_antwort) + '</div></div>' +
+    '<div class="fuss">' +
+      '<span class="phase-pill truth"><span class="dot"></span>Auflösung</span>' +
+      '<span class="zaehler" id="zaehler"></span>' +
+    '</div>' +
+    '<div id="scoreboard-slot"></div>';
+  baueAmbient();
+}
+
+function patchLobby(luegen){
+  const lobby = document.getElementById('lobby');
+  if(!lobby) return;
+  const fertig = {};
+  luegen.forEach(l => fertig[l.spieler] = true);
+  lobby.querySelectorAll('.spieler').forEach(el => {
+    const n = el.getAttribute('data-name');
+    el.classList.toggle('fertig', !!fertig[n]);
+  });
+}
+
+function patchStimmen(luegen, stimmen, runde){
+  const grid = document.getElementById('grid');
+  if(!grid) return;
+  const auf = runde.aufgedeckt === true;
+
+  const zeigen = (auf || runde.phase !== 'raten');
+  grid.querySelectorAll('.karte').forEach(el => {
+    const key = el.getAttribute('data-text');
+    const cont = el.querySelector('.stimmen');
+    const waehler = zeigen ? stimmen.filter(s => s.gewaehlt.toLowerCase() === key) : [];
+    const neu = waehler.map(w => bild(w.spieler)).join('|');
+
+    if(cont.getAttribute('data-set') === neu) return;
+    cont.setAttribute('data-set', neu);
+    cont.innerHTML = waehler.map(w =>
+      '<img src="' + bild(w.spieler) + '" title="' + esc(w.spieler) + '" alt="">').join('');
+  });
+}
+
+function patchZaehler(runde, luegen, stimmen){
+  const z = document.getElementById('zaehler');
+  if(!z) return;
+  let html;
+  if(runde.phase === 'luegen'){
+    html = '<b>' + luegen.length + '</b> von ' + crew().length + ' abgegeben';
+  } else if(runde.phase === 'raten'){
+    html = '<b>' + stimmen.length + '</b> von ' + crew().length + ' gewählt';
+  } else {
+    const richtige = stimmen.filter(s => s.ist_echt).map(s => s.spieler);
+    html = richtige.length ? 'Richtig: <b>' + richtige.map(esc).join(', ') + '</b>' : 'Niemand hat es erraten';
+  }
+  if(z.innerHTML !== html) z.innerHTML = html;
+}
+
+function patchScoreboard(ges, rundePunkte, zeigeRunde){
+  const slot = document.getElementById('scoreboard-slot');
+  if(!slot) return;
+  const zeilen = crew().map(n => ({
+    name: n,
+    total: (ges[n] || 0) + (zeigeRunde ? (rundePunkte[n] || 0) : 0),
+    plus: zeigeRunde ? (rundePunkte[n] || 0) : 0
+  }));
+  if(!zeilen.some(z => z.total > 0)){
+    if(slot.getAttribute('data-set') !== ''){ slot.setAttribute('data-set',''); slot.innerHTML = ''; }
+    return;
+  }
+  const max = Math.max.apply(null, zeilen.map(z => z.total));
+  zeilen.sort((a,b) => b.total - a.total);
+  const sig = zeilen.map(z => z.name + ':' + z.total + ':' + z.plus).join('|');
+  if(slot.getAttribute('data-set') === sig) return;
+  slot.setAttribute('data-set', sig);
+  slot.innerHTML = '<div class="scoreboard">' +
+    zeilen.map(z =>
+      '<div class="score-pill' + (z.total > 0 && z.total === max ? ' fuehrt' : '') + '">' +
+        '<img src="' + bild(z.name) + '" alt="">' +
+        '<span class="sn">' + esc(z.name) + '</span>' +
+        '<span class="sp">' + z.total + '</span>' +
+        (z.plus > 0 ? '<span class="plus">+' + z.plus + '</span>' : '') +
+      '</div>'
+    ).join('') +
+  '</div>';
+}
+
+function start(){
+  if(!sb){
+    stage.innerHTML = '<div class="warten"><div class="big">Nicht eingeloggt</div></div>';
+    return;
+  }
+  sb.channel('bluff-host')
+    .on('postgres_changes', { event:'*', schema:'public', table:'bluff_runden' }, zeichne)
+    .on('postgres_changes', { event:'*', schema:'public', table:'bluff_luegen' }, zeichne)
+    .on('postgres_changes', { event:'*', schema:'public', table:'bluff_stimmen' }, zeichne)
+    .subscribe(status => {
+      if(status === 'SUBSCRIBED') zeichne();
+    });
+  zeichne();
+}
+
+baueAmbient();
+setTimeout(start, 300);
+</script>
+
+<script>
+// Turnier: Rolle merken und auf Formatwechsel horchen.
+// Schaltet der Spielleiter weiter, springt dieses Geraet mit.
+if(window.TURNIER){
+  TURNIER.setzeRolle('host');
+  TURNIER.starte(typeof sb !== "undefined" ? sb : null);
+}
+</script>
+<script>
+(function(){
+})();
+</script>
+<script src="../camera-config.js"></script>
+<script src="../stream-mode.js?v=48"></script>
+<script src="../show-camera.js?v=48"></script>
+<script src="../active-stream-mode.js?v=48"></script>
+</body>
+</html>

@@ -1,0 +1,462 @@
+/* ============================================================
+   SHOW CAMERA LAYER — kompakte Streamer-Kamera-Leiste
+   Gleiche Kartengroesse, Name + Punkte, animierter No-Cam-Zustand.
+   ============================================================ */
+.ka-camera-layer{
+  position:fixed;left:24px;right:24px;bottom:28px;z-index:80;
+  display:grid;grid-template-columns:repeat(var(--ka-count,1),var(--ka-card-w,240px));
+  justify-content:center;align-items:end;gap:14px;pointer-events:none;margin:auto;
+  max-height:24vh;
+}
+.ka-camera-layer[hidden]{display:none!important}
+.ka-camera-card{
+  position:relative;width:var(--ka-card-w,240px);aspect-ratio:16/9;min-width:0;overflow:hidden;
+  border-radius:14px;border:1px solid rgba(255,255,255,.18);
+  background:linear-gradient(145deg,rgba(18,24,39,.98),rgba(6,9,16,.99));
+  box-shadow:0 14px 34px rgba(0,0,0,.42),0 0 0 1px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.06);
+  isolation:isolate;transition:transform .22s ease,border-color .22s ease,box-shadow .22s ease;
+}
+.ka-camera-card.is-local{border-color:rgba(255,255,255,.24)}
+.ka-camera-card video{
+  position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:transparent;
+  opacity:0;transition:opacity .3s ease;z-index:2;
+}
+.ka-camera-card.has-video video{opacity:1}
+.ka-camera-card .ka-placeholder{
+  position:absolute;inset:0;z-index:1;display:flex;align-items:center;justify-content:center;
+  background:
+    radial-gradient(circle at 50% 38%,rgba(116,88,190,.28),transparent 34%),
+    linear-gradient(145deg,rgba(24,30,48,.98),rgba(7,10,18,.99));
+  transition:opacity .3s ease;
+}
+.ka-camera-card.has-video .ka-placeholder{opacity:0}
+.ka-placeholder-inner{display:flex;flex-direction:column;align-items:center;gap:8px;opacity:.92}
+.ka-person{
+  width:52px;height:52px;border-radius:50%;display:grid;place-items:center;
+  border:1px solid rgba(255,255,255,.17);background:rgba(255,255,255,.055);
+  box-shadow:0 0 30px rgba(136,103,220,.18);animation:kaPulse 2.7s ease-in-out infinite;
+}
+.ka-person svg{width:28px;height:28px;fill:none;stroke:rgba(255,255,255,.74);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.ka-placeholder-label{font:800 9px/1 Inter,system-ui,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.42)}
+.ka-camera-meta{
+  position:absolute;left:0;right:0;bottom:0;z-index:4;padding:28px 11px 10px;
+  background:linear-gradient(transparent,rgba(2,4,9,.94) 58%);
+  display:flex;align-items:flex-end;justify-content:space-between;gap:8px;
+}
+.ka-camera-name{font-weight:900;color:#fff;font-size:13px;letter-spacing:.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 2px 8px #000}
+.ka-camera-score{font-weight:900;color:#fff;font-size:11px;white-space:nowrap;padding:4px 7px;border-radius:999px;background:rgba(0,0,0,.52);border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(8px)}
+.ka-camera-live{position:absolute;top:9px;right:9px;z-index:5;font:900 8px/1 Inter,system-ui,sans-serif;letter-spacing:1.1px;padding:4px 6px;border-radius:999px;background:rgba(0,0,0,.48);color:rgba(255,255,255,.48);border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(8px)}
+.ka-camera-live.on{color:#fff;background:rgba(21,135,84,.8);border-color:rgba(117,255,188,.25)}
+.ka-camera-toggle{
+  pointer-events:auto;position:absolute;top:9px;left:9px;z-index:6;padding:6px 8px;border-radius:999px;
+  border:1px solid rgba(255,255,255,.14);background:rgba(5,8,14,.72);color:#fff;
+  font:900 9px/1 Inter,system-ui,sans-serif;box-shadow:0 8px 20px rgba(0,0,0,.28);backdrop-filter:blur(10px);
+  cursor:pointer;transition:transform .18s ease,background .18s ease,border-color .18s ease;
+}
+.ka-camera-toggle:hover{transform:translateY(-1px);background:rgba(26,34,52,.92)}
+.ka-camera-toggle.on{background:rgba(20,130,82,.88);border-color:rgba(120,255,190,.28)}
+.ka-camera-empty{display:none!important}
+@keyframes kaPulse{0%,100%{transform:scale(1);opacity:.72}50%{transform:scale(1.06);opacity:1}}
+
+/* OBS: keine Bedienelemente, etwas groessere Karten. */
+.ka-camera-layer.ka-stream{bottom:34px;gap:16px}
+.ka-stream .ka-camera-toggle{display:none!important}
+
+/* Die Kamera-Leiste soll das Spiel nicht dominieren. */
+body.ka-has-cameras .ka-camera-layer{opacity:1}
+
+@media(max-width:1100px){.ka-camera-layer{left:10px;right:10px;bottom:10px;gap:8px}.ka-camera-card{border-radius:12px}.ka-camera-name{font-size:11px}.ka-camera-score{font-size:9px;padding:3px 6px}}
+@media(max-width:680px){.ka-camera-layer{overflow-x:auto;justify-content:start;padding-bottom:2px}.ka-camera-card{flex:0 0 auto}.ka-camera-toggle{font-size:8px;padding:5px 7px}}
+@media(prefers-reduced-motion:reduce){.ka-person{animation:none}}
+
+
+/* v13: Broadcast-Safe-Area. Die Kamera-Leiste bleibt ausserhalb des eigentlichen
+   Frage-/Antwortbereichs und skaliert bei kleinen Hoehen automatisch herunter. */
+@media (min-height:850px){.ka-camera-layer{bottom:32px}}
+@media (max-height:760px){
+  .ka-camera-layer{bottom:12px;gap:9px}
+  .ka-camera-card{width:min(var(--ka-card-w,220px),25vh);}
+}
+@media (max-height:620px){
+  .ka-camera-layer{bottom:8px}
+  .ka-camera-card{width:min(var(--ka-card-w,200px),22vh);}
+  .ka-camera-meta{padding-top:20px;padding-bottom:6px}
+  .ka-camera-name{font-size:10px}.ka-camera-score{font-size:8px}
+}
+/* Emoji, Wer ist das und Morph brauchen mittig besonders viel freie Flaeche. */
+.ka-camera-layer[data-format="emoji"],
+.ka-camera-layer[data-format="weristdas"],
+.ka-camera-layer[data-format="morph"]{max-height:22vh}
+/* OBS ist reine Ausgabe: keine Hover-/Bedienwirkung. */
+.ka-stream .ka-camera-card{box-shadow:0 14px 34px rgba(0,0,0,.38),inset 0 1px 0 rgba(255,255,255,.06)}
+
+/* ============================================================
+   v14 — Format-aware Broadcast Layout
+   Ziel: Spiel bleibt Mittelpunkt, Kameras wirken wie Teil der Show.
+   ============================================================ */
+.ka-camera-layer{
+  --ka-bottom:22px;
+  --ka-gap:14px;
+  bottom:var(--ka-bottom);
+  gap:var(--ka-gap);
+  max-height:23vh;
+  padding:0 8px;
+}
+.ka-camera-card{
+  border-radius:16px;
+  border-color:rgba(255,255,255,.16);
+  box-shadow:0 18px 42px rgba(0,0,0,.46),0 0 0 1px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.065);
+}
+.ka-camera-card.has-video{
+  border-color:rgba(255,255,255,.22);
+}
+.ka-camera-meta{
+  padding:34px 12px 10px;
+}
+.ka-camera-name{font-size:12px;letter-spacing:.15px}
+.ka-camera-score{font-size:10px;padding:4px 8px}
+.ka-camera-live{top:8px;right:8px}
+.ka-camera-toggle{top:8px;left:8px}
+
+/* Mittige Quiz-Formate: extra viel Platz fuer Frage/Visuals. */
+.ka-camera-layer[data-format="emoji"],
+.ka-camera-layer[data-format="weristdas"],
+.ka-camera-layer[data-format="morph"]{
+  --ka-bottom:18px;
+  max-height:21vh;
+}
+
+/* Quizduell/Higher-Lower: Karten etwas kompakter, damit Board/Karten frei bleiben. */
+.ka-camera-layer[data-format="quizduell"],
+.ka-camera-layer[data-format="higherlower"]{
+  --ka-bottom:16px;
+  --ka-gap:12px;
+  max-height:20vh;
+}
+
+/* Black Stories / Imposter: Textflaechen brauchen unten etwas mehr Luft. */
+.ka-camera-layer[data-format="blackstories"],
+.ka-camera-layer[data-format="imposter"]{
+  --ka-bottom:18px;
+  max-height:21vh;
+}
+
+/* Separate Player/Buzzer-Formate: fuer OBS etwas praesenter, aber weiterhin ausserhalb des Spiels. */
+.ka-camera-layer[data-format="hotzone"],
+.ka-camera-layer[data-format="millionaer"],
+.ka-camera-layer[data-format="bluff-quiz"],
+.ka-camera-layer[data-format="ausreden"]{
+  --ka-bottom:20px;
+  max-height:22vh;
+}
+
+/* Mehr Spieler: automatisch etwas dichter, aber gleiche Kartengroesse pro Ansicht. */
+.ka-camera-layer[data-count="5"],
+.ka-camera-layer[data-count="6"],
+.ka-camera-layer[data-count="7"],
+.ka-camera-layer[data-count="8"]{--ka-gap:10px}
+
+/* OBS: sauberer Broadcast-Look, keinerlei Bedienung. */
+.ka-camera-layer.ka-stream{
+  --ka-bottom:26px;
+  max-height:24vh;
+}
+.ka-stream .ka-camera-card{
+  border-color:rgba(255,255,255,.2);
+  box-shadow:0 20px 46px rgba(0,0,0,.5),0 0 0 1px rgba(255,255,255,.035),inset 0 1px 0 rgba(255,255,255,.07);
+}
+.ka-stream .ka-camera-name{font-size:13px}
+.ka-stream .ka-camera-score{font-size:11px}
+
+/* Kleine Hoehen: Spielinhalt hat immer Vorrang. */
+@media (max-height:760px){
+  .ka-camera-layer{--ka-bottom:10px;max-height:19vh}
+  .ka-camera-card{border-radius:12px}
+  .ka-camera-meta{padding:22px 9px 7px}
+}
+@media (max-height:640px){
+  .ka-camera-layer{--ka-bottom:6px;--ka-gap:7px;max-height:17vh}
+  .ka-camera-name{font-size:9px}.ka-camera-score{font-size:8px;padding:3px 5px}
+  .ka-camera-live{font-size:7px;padding:3px 5px}
+  .ka-camera-toggle{font-size:7px;padding:4px 6px}
+}
+
+
+/* ============================================================
+   v15 — Full-width Camera Stage
+   Die komplette Flaeche unter dem Spiel wird von den Streamer-Karten genutzt.
+   Keine Video-Verzerrung: das Bild bleibt proportional und wird bei Bedarf
+   nur per object-fit:cover beschnitten.
+   ============================================================ */
+.ka-camera-layer{
+  --ka-stage-left:18px;
+  --ka-stage-right:18px;
+  --ka-stage-bottom:14px;
+  --ka-stage-height:23vh;
+  --ka-gap:10px;
+  left:var(--ka-stage-left);
+  right:var(--ka-stage-right);
+  bottom:var(--ka-stage-bottom);
+  height:var(--ka-stage-height);
+  max-height:none;
+  padding:0;
+  display:grid;
+  grid-template-columns:repeat(var(--ka-cols,1),minmax(0,1fr));
+  grid-template-rows:repeat(var(--ka-rows,1),minmax(0,1fr));
+  gap:var(--ka-gap);
+  align-items:stretch;
+  justify-content:stretch;
+}
+.ka-camera-card{
+  width:100%;
+  height:100%;
+  aspect-ratio:auto;
+  min-height:0;
+}
+.ka-camera-card video{
+  object-fit:cover;
+  object-position:center;
+}
+
+/* 1 Person: gross, aber nicht absurd breit. */
+.ka-camera-layer[data-count="1"]{
+  grid-template-columns:minmax(0,56vw);
+  justify-content:center;
+}
+/* 2–4 Personen: eine echte durchgehende Broadcast-Reihe. */
+.ka-camera-layer[data-count="2"],
+.ka-camera-layer[data-count="3"],
+.ka-camera-layer[data-count="4"]{
+  --ka-stage-height:24vh;
+}
+/* 5 Personen: weiterhin eine Reihe ueber die komplette Breite. */
+.ka-camera-layer[data-count="5"]{
+  --ka-stage-height:22vh;
+  --ka-gap:8px;
+}
+/* 6 Personen: 3x2, damit Gesichter nicht zu schmal werden. */
+.ka-camera-layer[data-count="6"]{
+  --ka-stage-height:29vh;
+  --ka-gap:8px;
+}
+/* 7–8 Personen: 4x2. */
+.ka-camera-layer[data-count="7"],
+.ka-camera-layer[data-count="8"]{
+  --ka-stage-height:30vh;
+  --ka-gap:8px;
+}
+
+/* Emoji / Wer ist das / Morph: klare Trennlinie zwischen Spiel und Kamera-Stage. */
+.ka-camera-layer[data-format="emoji"],
+.ka-camera-layer[data-format="weristdas"],
+.ka-camera-layer[data-format="morph"]{
+  --ka-stage-left:0px;
+  --ka-stage-right:0px;
+  --ka-stage-bottom:0px;
+  padding:8px 14px 12px;
+  border-top:2px solid rgba(76,170,255,.72);
+  background:linear-gradient(180deg,rgba(3,8,18,.12),rgba(3,8,18,.42));
+}
+
+/* OBS: randloser, kompakter Broadcast-Rahmen. */
+.ka-camera-layer.ka-stream{
+  --ka-stage-left:10px;
+  --ka-stage-right:10px;
+  --ka-stage-bottom:10px;
+}
+.ka-stream .ka-camera-card{border-radius:13px}
+
+/* Kleine Hoehen: Stage schrumpft, ohne den Spielbereich zu verdecken. */
+@media (max-height:760px){
+  .ka-camera-layer{--ka-stage-height:20vh;--ka-stage-bottom:6px}
+  .ka-camera-layer[data-count="6"],
+  .ka-camera-layer[data-count="7"],
+  .ka-camera-layer[data-count="8"]{--ka-stage-height:25vh}
+}
+@media (max-height:620px){
+  .ka-camera-layer{--ka-stage-height:18vh;--ka-gap:6px}
+  .ka-camera-layer[data-count="6"],
+  .ka-camera-layer[data-count="7"],
+  .ka-camera-layer[data-count="8"]{--ka-stage-height:23vh}
+}
+
+
+/* ============================================================
+   v16 — Single-row Broadcast Wall
+   6–8 Spieler bleiben in EINER Reihe. Die Karten werden kleiner,
+   nicht auf zwei Reihen verteilt und nicht geometrisch gestreckt.
+   ============================================================ */
+.ka-camera-layer[data-count="6"]{
+  --ka-stage-height:21vh;
+  --ka-gap:7px;
+}
+.ka-camera-layer[data-count="7"]{
+  --ka-stage-height:20vh;
+  --ka-gap:6px;
+}
+.ka-camera-layer[data-count="8"]{
+  --ka-stage-height:19vh;
+  --ka-gap:6px;
+}
+
+/* Spiellastige Formate halten die Kamera-Wall bewusst kompakt. */
+.ka-camera-layer[data-format="quizduell"][data-count="6"],
+.ka-camera-layer[data-format="higherlower"][data-count="6"],
+.ka-camera-layer[data-format="millionaer"][data-count="6"],
+.ka-camera-layer[data-format="hotzone"][data-count="6"],
+.ka-camera-layer[data-format="bluff-quiz"][data-count="6"],
+.ka-camera-layer[data-format="ausreden"][data-count="6"]{--ka-stage-height:20vh}
+
+.ka-camera-layer[data-format="quizduell"][data-count="7"],
+.ka-camera-layer[data-format="higherlower"][data-count="7"],
+.ka-camera-layer[data-format="millionaer"][data-count="7"],
+.ka-camera-layer[data-format="hotzone"][data-count="7"],
+.ka-camera-layer[data-format="bluff-quiz"][data-count="7"],
+.ka-camera-layer[data-format="ausreden"][data-count="7"]{--ka-stage-height:19vh}
+
+.ka-camera-layer[data-format="quizduell"][data-count="8"],
+.ka-camera-layer[data-format="higherlower"][data-count="8"],
+.ka-camera-layer[data-format="millionaer"][data-count="8"],
+.ka-camera-layer[data-format="hotzone"][data-count="8"],
+.ka-camera-layer[data-format="bluff-quiz"][data-count="8"],
+.ka-camera-layer[data-format="ausreden"][data-count="8"]{--ka-stage-height:18vh}
+
+@media (max-height:760px){
+  .ka-camera-layer[data-count="6"]{--ka-stage-height:18vh}
+  .ka-camera-layer[data-count="7"]{--ka-stage-height:17vh}
+  .ka-camera-layer[data-count="8"]{--ka-stage-height:16vh}
+}
+
+/* ============================================================
+   v17 — Kamera-Komposition ohne sichtbare Trennlinie
+   ============================================================ */
+.ka-camera-layer[data-format="emoji"],
+.ka-camera-layer[data-format="weristdas"],
+.ka-camera-layer[data-format="morph"]{
+  border-top:0!important;background:none!important;padding:0!important;
+  --ka-stage-left:18px;--ka-stage-right:18px;--ka-stage-bottom:12px;
+}
+/* Eine einzelne Cam bleibt bewusst normal gross statt die ganze Breite zu belegen. */
+.ka-camera-layer[data-count="1"]{left:50%;right:auto;width:min(460px,calc(100vw - 40px));height:22vh;transform:translateX(-50%)}
+.ka-camera-layer[data-count="2"]{left:50%;right:auto;width:min(940px,calc(100vw - 40px));height:24vh;transform:translateX(-50%)}
+.ka-camera-layer[data-count="3"]{left:50%;right:auto;width:min(1280px,calc(100vw - 36px));height:25vh;transform:translateX(-50%)}
+.ka-camera-layer[data-count="4"],.ka-camera-layer[data-count="5"]{height:25vh}
+.ka-camera-layer[data-count="6"]{height:22vh}.ka-camera-layer[data-count="7"]{height:21vh}.ka-camera-layer[data-count="8"]{height:20vh}
+/* Alte doppelte Spieler-/Punkteanzeigen werden durch Kamera-Karten ersetzt. */
+.ka-has-cameras #scoreboard,
+.ka-has-cameras .scoreboard,
+.ka-has-cameras #hostScores,
+.ka-has-cameras .lives-strip,
+.ka-has-cameras #players.players{display:none!important}
+/* Quizduell: Board naeher ans Logo und mehr Luft fuer die Kamera-Wall. */
+.ka-has-cameras #hostView .board-wrap{padding-top:0!important;transform:translateY(-26px);padding-bottom:24vh!important}
+.ka-has-cameras #hostView .board-head{margin-bottom:7px!important}
+/* Higher/Lower: der eigentliche Spielbereich bekommt den Platz der alten Namenskarten. */
+.ka-has-cameras .stage>.ruler{padding-top:4px!important}
+/* WWM: Frage/Antworten werden nach oben gezogen, damit die Cams nie Antworten verdecken. */
+.ka-camera-layer[data-format="millionaer"]{height:18vh}
+.ka-has-cameras .qframe{transform:translateY(-7vh)}
+/* Bluff/Ausreden: alte Lobby-Spieler verschwinden, das Spielprinzip/Karten bleiben. */
+.ka-has-cameras .lobby .spieler{display:none!important}
+/* Black Stories / Imposter: keine doppelte Spielerleiste. */
+.ka-camera-layer[data-format="blackstories"],.ka-camera-layer[data-format="imposter"]{height:21vh}
+
+/* Hotzone besitzt eigene Team-Kamera-Zonen statt einer globalen unteren Wall. */
+body.ka-hotzone-team-camera .ka-camera-layer{display:none!important}
+.ka-hotzone-team-cams{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:12px;min-height:0;align-content:end}
+.ka-hotzone-team-cams .ka-camera-card{position:relative!important;width:100%!important;height:auto!important;aspect-ratio:16/10;min-height:92px}
+.ka-hotzone-team-cams .ka-camera-name{font-size:10px}.ka-hotzone-team-cams .ka-camera-score{font-size:8px}.ka-hotzone-team-cams .ka-camera-meta{padding:24px 7px 6px}
+.ka-hotzone-team-cams .ka-camera-toggle{font-size:7px;padding:4px 6px}
+.ka-hotzone-team-cams[data-ka-team-zone="none"]{display:none}
+.ka-camera-layer[data-format="bluff-quiz"],.ka-camera-layer[data-format="ausreden"]{height:18vh}
+.ka-camera-layer[data-format="higherlower"]{height:22vh}
+.ka-camera-layer[data-format="quizduell"]{height:22vh}
+
+/* ============================================================
+   v18 — Format placement cleanup
+   Standard: Cams unten. Ausnahmen nur Hotzone / Imposter / Black Stories.
+   ============================================================ */
+
+/* Standard fuer ALLE Formate: unten, ohne sichtbare Trennlinie. */
+.ka-camera-layer:not([data-format="hotzone"]):not([data-format="blackstories"]){
+  border:0!important;
+  background:none!important;
+}
+
+/* Imposter: maximal drei grosse Cams pro Reihe. 6 Spieler = 3 x 2. */
+.ka-camera-layer[data-format="imposter"]{
+  left:50%;
+  right:auto;
+  width:min(1180px,calc(100vw - 48px));
+  transform:translateX(-50%);
+  bottom:16px;
+  gap:10px;
+  max-height:none;
+  border:0!important;
+  background:none!important;
+}
+.ka-camera-layer[data-format="imposter"][data-count="1"]{height:22vh;width:min(460px,calc(100vw - 48px))}
+.ka-camera-layer[data-format="imposter"][data-count="2"]{height:24vh;width:min(820px,calc(100vw - 48px))}
+.ka-camera-layer[data-format="imposter"][data-count="3"]{height:25vh;width:min(1120px,calc(100vw - 48px))}
+.ka-camera-layer[data-format="imposter"][data-count="4"],
+.ka-camera-layer[data-format="imposter"][data-count="5"],
+.ka-camera-layer[data-format="imposter"][data-count="6"]{height:43vh;width:min(1120px,calc(100vw - 48px))}
+.ka-camera-layer[data-format="imposter"][data-count="7"],
+.ka-camera-layer[data-format="imposter"][data-count="8"]{height:52vh;width:min(1120px,calc(100vw - 48px))}
+
+/* Black Stories: Kameras werden zu zwei grossen Seiten-Spalten.
+   Erste Haelfte links, zweite Haelfte rechts. Das Story-Feld in der Mitte bleibt frei. */
+.ka-camera-layer[data-format="blackstories"]{
+  position:fixed;
+  inset:150px 22px 26px 22px;
+  width:auto;
+  height:auto;
+  transform:none;
+  display:block;
+  pointer-events:none;
+  border:0!important;
+  background:none!important;
+  padding:0!important;
+}
+.ka-camera-layer[data-format="blackstories"] .ka-camera-card{
+  position:absolute;
+  width:min(285px,18vw);
+  height:min(158px,18vh);
+  aspect-ratio:16/9;
+}
+.ka-camera-layer[data-format="blackstories"] .ka-camera-card[data-side="left"]{left:0}
+.ka-camera-layer[data-format="blackstories"] .ka-camera-card[data-side="right"]{right:0}
+.ka-camera-layer[data-format="blackstories"] .ka-camera-card[data-side-row="1"]{top:0}
+.ka-camera-layer[data-format="blackstories"] .ka-camera-card[data-side-row="2"]{top:calc(50% - 79px)}
+.ka-camera-layer[data-format="blackstories"] .ka-camera-card[data-side-row="3"]{bottom:0}
+/* Falls 7–8 Spieler verwendet werden, bleiben die Seiten ebenfalls sauber verteilt. */
+.ka-camera-layer[data-format="blackstories"][data-count="7"] .ka-camera-card,
+.ka-camera-layer[data-format="blackstories"][data-count="8"] .ka-camera-card{height:min(132px,15vh);width:min(244px,16vw)}
+.ka-camera-layer[data-format="blackstories"][data-count="7"] .ka-camera-card[data-side-row="1"],
+.ka-camera-layer[data-format="blackstories"][data-count="8"] .ka-camera-card[data-side-row="1"]{top:0}
+.ka-camera-layer[data-format="blackstories"][data-count="7"] .ka-camera-card[data-side-row="2"],
+.ka-camera-layer[data-format="blackstories"][data-count="8"] .ka-camera-card[data-side-row="2"]{top:33%;transform:translateY(-50%)}
+.ka-camera-layer[data-format="blackstories"][data-count="7"] .ka-camera-card[data-side-row="3"],
+.ka-camera-layer[data-format="blackstories"][data-count="8"] .ka-camera-card[data-side-row="3"]{top:66%;bottom:auto;transform:translateY(-50%)}
+.ka-camera-layer[data-format="blackstories"] .ka-camera-card[data-side-row="4"]{bottom:0}
+
+/* Black Stories Mitte fuer Story/Status reservieren, Kameras liegen nur an den Seiten. */
+body.ka-has-cameras .story-wrap,
+body.ka-has-cameras .story-card,
+body.ka-has-cameras #storyCard{
+  max-width:min(900px,58vw);
+  margin-left:auto;
+  margin-right:auto;
+}
+
+/* Hotzone bleibt bewusst komplett aus der unteren Standard-Wall heraus:
+   dort sitzen die Kameras weiterhin direkt in den jeweiligen Teams. */
+body.ka-hotzone-team-camera .ka-camera-layer{display:none!important}
+
+@media (max-height:760px){
+  .ka-camera-layer[data-format="imposter"][data-count="4"],
+  .ka-camera-layer[data-format="imposter"][data-count="5"],
+  .ka-camera-layer[data-format="imposter"][data-count="6"]{height:38vh}
+  .ka-camera-layer[data-format="blackstories"]{inset:115px 14px 16px 14px}
+  .ka-camera-layer[data-format="blackstories"] .ka-camera-card{width:min(235px,18vw);height:min(132px,17vh)}
+}
