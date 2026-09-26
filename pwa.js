@@ -1,0 +1,1 @@
+(function(){'use strict';if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister())).catch(()=>{});}if('caches' in window){caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('quiz-app-')).map(k=>caches.delete(k)))).catch(()=>{});}})();
