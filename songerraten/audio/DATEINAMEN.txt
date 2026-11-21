@@ -1,0 +1,36 @@
+GUESS THE SONG – MP3-DATEIEN
+
+Lege deine MP3-Dateien direkt in diesen Ordner.
+Die Dateinamen müssen exakt wie unten angegeben heißen (alles klein, keine Leerzeichen).
+Anschließend die komplette Website mitsamt audio-Ordner neu veröffentlichen.
+
+
+Der Songkatalog wählt die zugehörige Datei automatisch aus.
+Alternativ kannst du weiterhin Dateien direkt in der Spielleitung auswählen.
+
+K-Pop Songs
+  dynamite.mp3
+  howyoulikethat.mp3
+  gangnamstyle.mp3
+  supershy.mp3
+  cupid.mp3
+  pinkvenom.mp3
+  godsmenu.mp3
+
+Pop
+  blindinglights.mp3
+  shapeofyou.mp3
+  badromance.mp3
+  levitating.mp3
+  uptownfunk.mp3
+  asitwas.mp3
+  flowers.mp3
+
+Rap
+  loseyourself.mp3
+  sickomode.mp3
+  humble.mp3
+  godsplan.mp3
+  withoutme.mp3
+  industrybaby.mp3
+

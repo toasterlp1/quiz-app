@@ -1,0 +1,29 @@
+.song-play-panel{width:min(850px,94vw);display:flex;flex-direction:column;align-items:center;gap:14px;margin-top:8px}
+.song-stat{display:flex;justify-content:center;flex-wrap:wrap;gap:16px;font-size:clamp(17px,2.2vw,27px);font-weight:850;color:#eaf3ff}
+.song-stat span{padding:9px 18px;border:1px solid rgba(131,173,227,.35);background:rgba(21,39,69,.8);border-radius:999px}
+#songGuess{width:min(660px,90vw)}
+#songSearch{width:100%;font:700 21px/1.4 system-ui,sans-serif;padding:14px 19px;background:#14233d;color:#fff;border:1px solid #5678a8;border-radius:14px;outline:none}
+#songSearch:focus{border-color:#8cbaff}
+.song-suggestions{display:flex;flex-direction:column;gap:4px;width:100%;max-height:220px;overflow-y:auto;margin:8px 0}
+.song-suggestions button{padding:11px 15px;text-align:left;border:1px solid #344c70;border-radius:10px;background:#182b48;color:#fff;cursor:pointer}
+.song-suggestions button small{float:right;color:#9cb6dc}
+#songLock,#songSkip{padding:12px 23px;font-size:16px;background:#3566ad;border:1px solid #729fdf;color:white;border-radius:11px;font-weight:800;cursor:pointer}
+#songLock:disabled,#songSkip:disabled{opacity:.45;cursor:not-allowed}
+#songSkip{background:#243a5b}
+#songLocked,#skipStatus{color:#c6d8ee;font-weight:700}
+.song-results{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:8px;width:100%;margin-top:14px}
+.song-result{background:rgba(24,43,73,.92);border:1px solid #45618b;border-radius:12px;padding:12px 16px;display:grid;gap:5px;text-align:left}
+.song-result strong{font-size:15px}.song-result span{color:#c1d4ec}.song-result b{font-size:21px}
+.song-result .positive{color:#59dd9c}.song-result .negative{color:#ff8e94}
+.song-selected,.song-director-step{padding:12px 16px;color:#eef4ff;font-weight:800;font-size:18px}
+.director #songCatalog{max-height:320px;overflow-y:auto}
+.director #player{display:block;width:100%;margin-top:10px}
+.director #songCategory{width:100%;padding:10px;border-radius:10px;background:#1b304d;color:white;border:1px solid #3a5c87}
+.director #songDirectorStatus,.director #skipStatus,.director #songProgress{color:#c3d7ee;font-weight:700;padding:5px}
+@media(max-width:720px){.song-stat{font-size:15px;gap:6px}.song-stat span{padding:7px 10px}.song-center{gap:10px}.song-stage{padding-bottom:30vh}.song-results{grid-template-columns:1fr}}
+
+.song-suggestions button{display:flex;justify-content:space-between;align-items:center;gap:18px;min-height:43px}
+.song-suggestions button span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.song-suggestions button small{float:none;flex:0 0 auto;max-width:45%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right}
+.song-suggestions .song-custom,.song-suggestions .song-more{border-color:#526c94;background:#1e3555}
+.song-search-info{margin:8px 5px;color:#b4c7dd;font-size:13px}
