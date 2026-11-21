@@ -7,7 +7,7 @@
   const format = parts.find(part => allowed.has(part));
   if(!format) return;
   const file = (parts[parts.length - 1] || '').toLowerCase();
-  if(!['host.html','spielleiter.html','index.html'].includes(file) && !(format === 'quizduell' && file === 'quizduell')) return;
+  if(!['host.html','spielleiter.html','index.html'].includes(file) && !(format === 'songerraten' && file === 'spieler.html') && !(format === 'quizduell' && file === 'quizduell')) return;
 
   let busy = false;
   let sent = false;
