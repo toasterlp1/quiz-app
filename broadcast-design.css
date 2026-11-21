@@ -1,0 +1,195 @@
+@import url('./studio-overhaul.css?v=1');
+:root{--wc-cyan:#5ee7ff;--wc-violet:#9b7cff;--wc-green:#56f2a5;--wc-red:#ff5f78;--wc-gold:#ffd36a;--wc-panel:rgba(10,16,31,.78);--wc-line:rgba(255,255,255,.12);--wc-shadow:0 24px 70px rgba(0,0,0,.42)}
+html,body{background:#070b14;color:#f7fbff}body{overflow-x:hidden}body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:-2;background:radial-gradient(65vw 50vh at 15% 8%,rgba(41,180,210,.13),transparent 68%),radial-gradient(62vw 58vh at 88% 20%,rgba(129,71,221,.14),transparent 70%),linear-gradient(155deg,#0a1120 0%,#080c16 50%,#060911 100%)}
+body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;background:linear-gradient(rgba(255,255,255,.014) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.012) 1px,transparent 1px);background-size:72px 72px;mask-image:linear-gradient(to bottom,rgba(0,0,0,.5),transparent 72%)}
+button,input,select,textarea{font-family:Inter,system-ui,sans-serif}button{transition:transform .16s ease,filter .16s ease,box-shadow .2s ease,border-color .2s ease}button:hover{filter:brightness(1.08)}button:active{transform:scale(.975)}
+.panel,.card,.karte,.qframe,.question-card,.story-card,.round-box,.answer,.antwort,.jk,.lobby,.box{border-color:rgba(255,255,255,.11)!important;box-shadow:0 18px 55px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.04)}
+.host .stage{background:radial-gradient(70% 70% at 12% 15%,rgba(var(--akzent-rgb,48,180,220),.19),transparent 68%),radial-gradient(65% 70% at 88% 32%,rgba(var(--akzent2-rgb,145,80,220),.18),transparent 70%),linear-gradient(155deg,#0d1628,#080d18 58%,#070a12)!important}
+.format-logo,.logo{filter:drop-shadow(0 10px 24px rgba(0,0,0,.34))}
+#ka-runtime-timer{top:22px;left:24px;min-width:122px;padding:10px 16px;border-radius:16px;background:linear-gradient(180deg,rgba(14,23,42,.92),rgba(7,12,23,.88));border:1px solid rgba(119,220,255,.22);box-shadow:0 14px 42px rgba(0,0,0,.36),inset 0 1px rgba(255,255,255,.08);font-size:26px;font-variant-numeric:tabular-nums}
+#ka-runtime-timer::before{content:"TIME";display:block;font-size:7px;letter-spacing:.25em;color:#8fa7c8;margin-bottom:5px}#ka-runtime-timer.danger{color:#fff;border-color:rgba(255,79,103,.7);background:linear-gradient(180deg,rgba(65,13,26,.94),rgba(20,8,16,.92));box-shadow:0 0 0 1px rgba(255,70,96,.18),0 0 38px rgba(255,40,72,.22),0 16px 42px rgba(0,0,0,.4)}
+#ka-team-strip{top:92px;left:24px;gap:8px}.ka-team-pill{padding:8px 12px;border-radius:12px;background:rgba(9,15,29,.84);backdrop-filter:blur(18px);box-shadow:0 10px 28px rgba(0,0,0,.3);font-size:10px}
+body.ka-stream .buzz-side{background:linear-gradient(180deg,rgba(12,19,35,.9),rgba(7,11,22,.82))!important;border:1px solid rgba(255,255,255,.1)!important;border-radius:20px!important;padding:16px!important;box-shadow:0 24px 60px rgba(0,0,0,.35)!important;backdrop-filter:blur(18px)}
+body.ka-stream .buzz-orb{box-shadow:0 0 0 1px rgba(255,255,255,.14),0 0 34px rgba(142,94,220,.24),inset 0 1px rgba(255,255,255,.12)!important}
+body.ka-stream #kernBuzzListeSlot{margin-top:10px}.kern-buzz-liste,.buzz-list,.buzzer-list{border-radius:14px!important;overflow:hidden}
+@keyframes wcEnter{from{opacity:0;transform:translateY(10px) scale(.99)}to{opacity:1;transform:none}}@keyframes wcGlow{0%,100%{box-shadow:0 0 0 1px rgba(94,231,255,.08),0 18px 48px rgba(0,0,0,.32)}50%{box-shadow:0 0 0 1px rgba(94,231,255,.18),0 18px 48px rgba(0,0,0,.32),0 0 24px rgba(94,231,255,.08)}}
+.host .stage>*:not(.ka-camera-layer),body.ka-stream main>*{animation:wcEnter .38s cubic-bezier(.2,.8,.2,1) both}
+body[data-format="emoji"]{--wc-accent:#ffcc52}body[data-format="weristdas"]{--wc-accent:#42d9ff}body[data-format="morph"]{--wc-accent:#b27cff}body[data-format="hotzone"]{--wc-accent:#ff6177}body[data-format="quizduell"]{--wc-accent:#5ec8ff}body[data-format="millionaer"]{--wc-accent:#b690ff}body[data-format="higherlower"]{--wc-accent:#58e6bd}body[data-format="blackstories"]{--wc-accent:#ff6b6b}body[data-format="imposter"]{--wc-accent:#f6c85f}body[data-format="bluff-quiz"]{--wc-accent:#6edcff}body[data-format="ausreden"]{--wc-accent:#ff9e6d}
+@media(max-width:1100px){#ka-runtime-timer{top:10px;left:10px;min-width:96px;padding:8px 11px;font-size:20px}#ka-team-strip{top:72px;left:10px}}
+@media(prefers-reduced-motion:reduce){.host .stage>*,body.ka-stream main>*{animation:none!important}}
+
+
+/* v53 broadcast atmosphere: motion only, no game-layout displacement */
+@keyframes kaAtmosphereA{0%,100%{transform:translate3d(-2%,-1%,0) scale(1.02);opacity:.42}50%{transform:translate3d(2%,1.5%,0) scale(1.06);opacity:.62}}
+@keyframes kaAtmosphereB{0%,100%{background-position:0% 20%,100% 80%}50%{background-position:18% 34%,82% 66%}}
+body[data-format]::before{animation:kaAtmosphereB 18s ease-in-out infinite!important;background-size:120% 120%!important}
+body[data-format]::after{content:"";position:fixed;inset:-8%;pointer-events:none;z-index:-1;background:radial-gradient(34vw 28vh at 18% 18%,color-mix(in srgb,var(--wc-accent,#5ee7ff) 10%,transparent),transparent 72%),radial-gradient(30vw 26vh at 82% 72%,rgba(151,96,255,.07),transparent 74%);animation:kaAtmosphereA 14s ease-in-out infinite;will-change:transform,opacity}
+.ka-top-logo{position:fixed!important;top:14px!important;left:50%!important;right:auto!important;transform:translateX(-50%)!important;z-index:260!important;max-width:300px!important;max-height:138px!important;width:auto!important;height:auto!important;object-fit:contain!important;pointer-events:none!important;filter:drop-shadow(0 14px 28px rgba(0,0,0,.5))!important}
+body.ka-has-cameras:not([data-format="hotzone"]):not([data-format="blackstories"]):not([data-format="imposter"]) .stage{padding-bottom:clamp(190px,24vh,270px)!important;box-sizing:border-box}
+body[data-format="millionaer"] .panel,body[data-format="millionaer"] .card,body[data-format="millionaer"] .box,body[data-format="millionaer"] .question-card,body[data-format="millionaer"] .answer,body[data-format="millionaer"] .antwort{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;background-image:none!important}
+@media(max-width:1100px){.ka-top-logo{top:8px!important;max-width:220px!important;max-height:100px!important}body.ka-has-cameras:not([data-format="hotzone"]):not([data-format="blackstories"]):not([data-format="imposter"]) .stage{padding-bottom:20vh!important}}
+@media(prefers-reduced-motion:reduce){body[data-format]::before,body[data-format]::after{animation:none!important}}
+
+/* v60: no visible browser scrollbars in game/OBS views */
+html,body{max-width:100%;overflow-x:hidden!important}
+*{scrollbar-width:none!important;-ms-overflow-style:none!important}
+*::-webkit-scrollbar{width:0!important;height:0!important;display:none!important}
+iframe{max-width:100%!important}
+
+/* Ruhige, einheitliche Bühnenfarben ohne Rastertexturen und starke Lichtblitze. */
+body[data-format]::before{animation:none!important;background:radial-gradient(ellipse 70% 55% at 50% 0%,rgba(66,95,143,.13),transparent 75%),#080e1b!important}
+body[data-format]::after{animation:none!important;background:none!important}
+.host .stage,.stage{background:radial-gradient(ellipse 85% 70% at 50% 0%,rgba(47,77,125,.20),transparent 76%),#08101e!important}
+.host .stage::before,.stage::before{background-image:none!important}
+.panel,.card,.karte,.qframe,.question-card,.story-card,.round-box,.answer,.antwort,.jk,.lobby,.box{box-shadow:0 12px 32px rgba(0,0,0,.25)!important}
+body.ka-stream .buzz-orb,.buzz-orb{box-shadow:0 5px 18px rgba(0,0,0,.25)!important}
+.buzz-orb,.buzzer-btn,#hostBigBuzz{transition:background .18s ease,border-color .18s ease,transform .12s ease!important;animation-duration:.01ms!important}
+.ka-top-logo{filter:drop-shadow(0 8px 20px rgba(0,0,0,.32))!important}
+.buzz-orb,.buzzer-btn,#hostBigBuzz,#emojiHostBuzzBtn{width:76px!important;height:76px!important;min-width:76px!important;min-height:76px!important;max-width:76px!important;max-height:76px!important;border:1px solid #6283af!important;border-radius:50%!important;background:#27466e!important;color:#e9f4ff!important;font-size:12px!important;font-weight:800!important;letter-spacing:.02em!important;box-shadow:0 8px 28px #0005!important;text-shadow:none!important;filter:none!important}
+.buzz-orb:not(:disabled):active,.buzzer-btn:not(:disabled):active{transform:scale(.96)!important}
+.buzz-orb:disabled,.buzzer-btn:disabled{opacity:.4!important}
+body.ka-has-cameras[data-format="morph"] .scoreboard,
+body.ka-has-cameras[data-format="weristdas"] .scoreboard,
+body.ka-has-cameras[data-format="emoji"] .scoreboard,
+body.ka-has-cameras[data-format="imposter"] .scoreboard{display:none!important}
+
+/* Referenz-Bühne: Kameras nutzen die verfügbare Bildschirmbreite, nicht 240px je Person. */
+.ka-camera-layer:not([data-format="blackstories"]):not([data-format="imposter"]):not([data-format="hotzone"]){
+  --ka-gap:clamp(6px,.55vw,12px);
+  grid-template-columns:repeat(var(--ka-count,1),minmax(0,1fr))!important;
+  gap:var(--ka-gap)!important;
+  bottom:8px!important;left:8px!important;right:8px!important;
+  padding:0!important;
+  max-height:29vh!important;
+  width:auto!important;transform:none!important;
+}
+
+/* 1–3 Teilnehmer hatten aus der alten Kameraansicht noch translateX(-50%). */
+body[data-format="quizduell"] .ka-camera-layer[data-count="1"],
+body[data-format="quizduell"] .ka-camera-layer[data-count="2"],
+body[data-format="quizduell"] .ka-camera-layer[data-count="3"]{
+  left:8px!important;right:8px!important;width:auto!important;transform:none!important;
+  max-width:none!important;
+}
+body[data-format="quizduell"] .ka-camera-layer{overflow:hidden!important}
+body[data-format="quizduell"] #qOverlay .resultbar.correct,
+body[data-format="quizduell"] #qOverlay .resultbar.reveal{display:none!important}
+body[data-format="quizduell"] #qOverlay .qanswer,
+body[data-format="quizduell"] #qOverlay .answer-reveal{
+  background:transparent!important;border:0!important;box-shadow:none!important;
+}
+body[data-format="quizduell"] #ovAnswerVal{
+  display:inline-block!important;width:auto!important;max-width:100%!important;
+  padding:10px 22px!important;background:#156d50!important;
+  border:1px solid #3bc18a!important;color:#e9fff4!important;
+  border-radius:999px!important;box-shadow:none!important;
+  font-family:Inter,system-ui,sans-serif!important;font-size:clamp(22px,2.2vw,38px)!important;
+  line-height:1.25!important;
+}
+body[data-format="quizduell"] #ovAnswer .lbl{display:none!important}
+body[data-format="quizduell"] #ovAnswer::before,body[data-format="quizduell"] #ovAnswer::after{display:none!important}
+body[data-format="quizduell"] #ovAnswer{text-align:center!important;animation:none!important}
+body[data-format="quizduell"].qd-soft-wrong #qOverlay .qcard{
+  border-color:#bb6471!important;box-shadow:0 0 0 2px #9a425566,0 20px 50px #0007!important;
+}
+.ka-camera-layer:not([data-format="blackstories"]):not([data-format="imposter"]):not([data-format="hotzone"]) .ka-camera-card{
+  width:min(100%,51.5vh)!important;max-width:100%!important;aspect-ratio:16/9!important;
+  justify-self:center!important;
+  border-radius:12px!important;
+}
+.ka-camera-card.has-video video{filter:none!important;transform:none!important}
+.ka-camera-meta{bottom:9px!important;max-width:92%!important}
+.ka-camera-badge{
+  padding:4px 7px!important;gap:0!important;
+  border-radius:999px!important;
+  border:1px solid color-mix(in srgb,var(--ka-team,#52739f) 75%,#ffffff 25%)!important;
+  background:var(--ka-team,#334c74)!important;
+  box-shadow:0 3px 12px #0008!important;
+}
+.ka-camera-badge .ka-camera-name{background:none!important;border:0!important;padding:5px 8px!important;font-size:clamp(11px,.95vw,16px)!important;max-width:none!important;text-shadow:none!important}
+.ka-camera-badge .ka-camera-score{
+  -webkit-text-fill-color:#fff!important;background:rgba(0,0,0,.22)!important;
+  color:#fff!important;font-size:clamp(11px,.9vw,15px)!important;
+  padding:5px 8px!important;border-radius:999px!important;
+}
+.ka-camera-sep{display:none!important}
+.ka-camera-card.ka-is-active-turn{animation:none!important;transform:none!important;box-shadow:0 0 0 2px #9be3c2,0 16px 36px #0009!important}
+.ka-camera-card.ka-is-active-turn .ka-active-turn{animation:none!important}
+
+/* Inhaltliche Bühnenhöhe wird von der tatsächlich sichtbaren Kamerareihe abgezogen. */
+body.ka-has-cameras[data-format="quizduell"] #hostView .board-wrap{
+  width:min(1780px,calc(100vw - 42px))!important;
+  margin:0 auto calc(var(--ka-camera-reserve,225px) + 6px)!important;
+}
+body.ka-has-cameras[data-format="quizduell"] #hostView .cat-head{font-size:clamp(12px,1.25vw,21px)!important}
+body.ka-has-cameras[data-format="quizduell"] #hostView .cell{font-size:clamp(23px,2.7vw,43px)!important}
+body[data-format="quizduell"] #qOverlay{align-items:center!important}
+body[data-format="quizduell"] #qOverlay .qcard{width:min(1100px,90vw)!important}
+
+body[data-format="higherlower"] .header{height:118px!important;flex-basis:118px!important}
+body[data-format="higherlower"] .ruler{flex:0 0 auto!important;z-index:35!important}
+body[data-format="higherlower"] .canvas{flex:1 1 auto!important;min-height:0!important}
+body[data-format="higherlower"] .ka-top-logo{z-index:42!important;top:10px!important;max-height:100px!important}
+body.ka-has-cameras[data-format="higherlower"] .stage{
+  padding-bottom:calc(var(--ka-camera-reserve,235px) + 8px)!important;
+}
+body[data-format="higherlower"] .pcard .lbl{font-size:clamp(12px,.85vw,16px)!important}
+body[data-format="higherlower"] .pcard{box-shadow:0 10px 22px #0007!important}
+
+body.ka-has-cameras[data-format="emoji"] .board{width:min(1430px,94vw)!important}
+body.ka-has-cameras[data-format="emoji"] .slot{width:clamp(145px,15.5vw,280px)!important;height:clamp(145px,15.5vw,280px)!important}
+body.ka-has-cameras[data-format="weristdas"] .frame-outer,
+body.ka-has-cameras[data-format="morph"] .frame-outer{
+  width:min(65vh,calc(100vh - var(--ka-camera-reserve,220px) - 130px),49vw)!important;
+  height:min(65vh,calc(100vh - var(--ka-camera-reserve,220px) - 130px),49vw)!important;
+}
+body.ka-has-cameras[data-format="millionaer"] .stage{padding-bottom:calc(var(--ka-camera-reserve,220px) + 18px)!important}
+body.ka-has-cameras[data-format="millionaer"] .qframe{transform:none!important;max-width:1500px!important}
+body.ka-has-cameras[data-format="bluff-quiz"] .stage,
+body.ka-has-cameras[data-format="ausreden"] .stage{padding-bottom:calc(var(--ka-camera-reserve,210px) + 12px)!important}
+@media(max-height:700px){
+  .ka-camera-layer:not([data-format="blackstories"]):not([data-format="imposter"]):not([data-format="hotzone"]){max-height:25vh!important}
+  .ka-camera-layer:not([data-format="blackstories"]):not([data-format="imposter"]):not([data-format="hotzone"]) .ka-camera-card{width:min(100%,44vh)!important}
+  .ka-camera-badge .ka-camera-name{font-size:11px!important}
+}
+
+/* V63: ruhiges, formatabhängiges Bühnenlicht ohne Raster oder grelle Effekte. */
+body[data-format="quizduell"]{--ambient-a:rgba(31,101,171,.28);--ambient-b:rgba(36,67,128,.2)}
+body[data-format="higherlower"]{--ambient-a:rgba(28,128,139,.23);--ambient-b:rgba(142,55,105,.14)}
+body[data-format="emoji"]{--ambient-a:rgba(47,112,189,.24);--ambient-b:rgba(127,80,194,.14)}
+body[data-format="weristdas"]{--ambient-a:rgba(62,76,166,.25);--ambient-b:rgba(120,67,166,.14)}
+body[data-format="morph"]{--ambient-a:rgba(132,60,124,.2);--ambient-b:rgba(52,89,148,.22)}
+body[data-format="millionaer"]{--ambient-a:rgba(104,58,159,.23);--ambient-b:rgba(66,78,153,.2)}
+body[data-format="bluff-quiz"]{--ambient-a:rgba(138,91,54,.18);--ambient-b:rgba(44,107,135,.2)}
+body[data-format="ausreden"]{--ambient-a:rgba(38,125,111,.2);--ambient-b:rgba(68,91,168,.16)}
+body[data-format="blackstories"]{--ambient-a:rgba(41,69,108,.24);--ambient-b:rgba(104,58,96,.13)}
+body[data-format="imposter"]{--ambient-a:rgba(103,51,119,.22);--ambient-b:rgba(57,102,141,.17)}
+body[data-format="hotzone"]{--ambient-a:rgba(31,88,152,.22);--ambient-b:rgba(144,50,76,.17)}
+body[data-format="songerraten"]{--ambient-a:rgba(49,92,155,.23);--ambient-b:rgba(123,65,150,.18)}
+body[data-format] .stage,
+body[data-format="quizduell"] #hostView{
+  background-image:
+    radial-gradient(ellipse 58% 66% at 14% 22%,var(--ambient-a,rgba(44,91,150,.22)),transparent 74%),
+    radial-gradient(ellipse 52% 58% at 85% 78%,var(--ambient-b,rgba(106,64,158,.14)),transparent 75%),
+    radial-gradient(ellipse 47% 35% at 56% 52%,rgba(42,83,118,.095),transparent 78%)!important;
+  background-color:#080e1c!important;
+  background-size:125% 125%,120% 120%,100% 100%!important;
+  animation:kaAmbientDrift 26s ease-in-out infinite alternate!important;
+}
+@keyframes kaAmbientDrift{
+  0%{background-position:0% 0%,100% 100%,50% 50%}
+  50%{background-position:15% 15%,85% 85%,50% 50%}
+  100%{background-position:35% 20%,65% 70%,50% 50%}
+}
+@media(prefers-reduced-motion:reduce){body[data-format] .stage,body[data-format="quizduell"] #hostView{animation:none!important}}
+
+/* Die Kamera-Reihe schließt ohne Zwischenräume wie bei einer Regie-Multiview aneinander an. */
+.ka-camera-layer:not([data-format="blackstories"]):not([data-format="imposter"]):not([data-format="hotzone"]){
+  --ka-gap:0px!important;gap:0!important;
+}
+.ka-camera-layer:not([data-format="blackstories"]):not([data-format="imposter"]):not([data-format="hotzone"]) .ka-camera-card{
+  border-radius:4px!important;
+}
+.ka-camera-layer:not([data-format="blackstories"]):not([data-format="imposter"]):not([data-format="hotzone"])[data-count]:not([data-count="1"]) .ka-camera-card{
+  width:100%!important;
+}

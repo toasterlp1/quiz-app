@@ -1,0 +1,125 @@
+
+
+
+#ka-bg,
+#ka-bg-huelle,
+#ka-bg-raster,
+#ka-bg-vignette,
+#ka-bg-korn{
+  display:none !important;
+}
+
+
+.host .orbs,
+.host .orbs > *,
+.host .o1, .host .o2, .host .o3, .host .o4,
+.host .ambient,
+.host .ambient > *,
+.host .particles,
+.host .particles > *,
+.host .particle,
+.host .partikel,
+.host .spark,
+.host .sparks,
+.host .ember,
+.host .embers,
+.host .mask-float,
+.host .glow-ring,
+.host .floaties,
+.host .bg-anim{
+  display:none !important;
+}
+
+
+.host .stage,
+.host .panel,
+.host .avatar-card,
+.host .jk,
+.host .round-box,
+.host .title-rule{
+  animation:none !important;
+}
+
+
+.host body,
+body.host{
+  background-color:#0a0d16;
+}
+
+.host .stage{
+  position:relative;
+  isolation:isolate;
+  background:
+    radial-gradient(85% 70% at 22% 8%,
+      rgba(var(--akzent-rgb, 74,127,208), .30) 0%,
+      rgba(var(--akzent-rgb, 74,127,208), .10) 38%,
+      rgba(var(--akzent-rgb, 74,127,208), 0) 70%),
+    radial-gradient(80% 65% at 84% 88%,
+      rgba(var(--akzent2-rgb, 150,80,220), .26) 0%,
+      rgba(var(--akzent2-rgb, 150,80,220), .08) 42%,
+      rgba(var(--akzent2-rgb, 150,80,220), 0) 72%),
+    radial-gradient(70% 55% at 50% 45%,
+      rgba(255,255,255,.045) 0%,
+      rgba(255,255,255,0) 65%),
+    linear-gradient(165deg, #141b2e 0%, #0d1220 48%, #080b14 100%)
+    !important;
+}
+
+
+.host .stage::after{
+  content:'';
+  position:absolute;
+  inset:0;
+  z-index:-1;
+  pointer-events:none;
+  background:
+    radial-gradient(ellipse 100% 92% at 50% 46%,
+      transparent 42%, rgba(0,0,0,.34) 80%, rgba(0,0,0,.56) 100%);
+  animation:none !important;
+}
+
+
+.host .stage::before{
+  display:none !important;
+}
+
+
+body.host:not(:has(.stage)){
+  background:
+    radial-gradient(85% 70% at 22% 8%,
+      rgba(var(--akzent-rgb, 74,127,208), .30) 0%,
+      rgba(var(--akzent-rgb, 74,127,208), .10) 38%,
+      rgba(var(--akzent-rgb, 74,127,208), 0) 70%),
+    radial-gradient(80% 65% at 84% 88%,
+      rgba(var(--akzent2-rgb, 150,80,220), .26) 0%,
+      rgba(var(--akzent2-rgb, 150,80,220), .08) 42%,
+      rgba(var(--akzent2-rgb, 150,80,220), 0) 72%),
+    radial-gradient(70% 55% at 50% 45%,
+      rgba(255,255,255,.045) 0%,
+      rgba(255,255,255,0) 65%),
+    linear-gradient(165deg, #141b2e 0%, #0d1220 48%, #080b14 100%)
+    fixed !important;
+}
+
+body.host:not(:has(.stage))::after{
+  content:'';
+  position:fixed;
+  inset:0;
+  z-index:0;
+  pointer-events:none;
+  background:
+    radial-gradient(ellipse 100% 92% at 50% 46%,
+      transparent 42%, rgba(0,0,0,.34) 80%, rgba(0,0,0,.56) 100%);
+}
+
+
+.host .stage,
+.host .panel,
+.host .card,
+.host .karte{
+  backdrop-filter:none;
+}
+
+@media (prefers-reduced-motion: reduce){
+  .host .stage::after{ animation:none !important; }
+}

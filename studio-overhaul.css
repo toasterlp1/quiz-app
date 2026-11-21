@@ -1,0 +1,141 @@
+/* Bühnenlayout 2026: klare Flächen, großzügige Typografie, ruhige Farben. */
+:root{--studio-ink:#f4f7fe;--studio-muted:#afbdd3;--studio-surface:#16243a;--studio-border:#3b5171;--studio-radius:18px}
+body[data-format]{color:var(--studio-ink);--wc-shadow:0 18px 45px rgba(0,0,0,.3)}
+body[data-format] .stage{background:radial-gradient(ellipse 75% 65% at 50% 5%,rgba(39,68,109,.28),transparent 75%),#080e1c!important}
+body[data-format] .stage::before{background-image:none!important;opacity:0!important}
+body[data-format] .stage::after{display:none!important}
+body[data-format] .title,body[data-format] .logo{filter:none!important;text-shadow:0 2px 12px rgba(0,0,0,.4)!important}
+body[data-format] .title{letter-spacing:.035em!important}
+.ka-format-logo .sub{display:none!important}
+body[data-format] .panel,body[data-format] .card,body[data-format] .qframe,body[data-format] .frame-outer,body[data-format] .frame-wrap{box-shadow:0 16px 40px rgba(0,0,0,.28)!important}
+body[data-format] button{cursor:pointer}
+body[data-format] button:focus-visible{outline:3px solid #9fbeea;outline-offset:3px}
+
+/* Kameras sind Teil der eigentlichen Bühne. Bei sechs Personen bleibt eine gleichmäßige Reihe. */
+.ka-camera-layer:not([data-format="blackstories"]):not([data-format="imposter"]):not([data-format="hotzone"]){bottom:12px!important;left:12px!important;right:12px!important;gap:9px!important;max-height:30vh!important}
+.ka-camera-card{border-radius:13px!important;box-shadow:0 10px 24px rgba(0,0,0,.34)!important}
+.ka-camera-card.has-video{border-width:2px!important}
+.ka-camera-meta{justify-content:center!important;gap:8px!important;padding:24px 8px 9px!important}
+.ka-camera-name{font-size:clamp(11px,1.1vw,17px)!important;line-height:1.1!important;padding:6px 14px!important;background:var(--ka-team,#344f7d)!important;border:1px solid rgba(255,255,255,.45)!important;border-radius:100px!important;text-align:center;text-overflow:ellipsis;max-width:78%}
+.ka-camera-score{font-size:clamp(11px,.85vw,14px)!important;background:rgba(8,15,29,.85)!important;padding:6px 10px!important}
+.ka-camera-live,.ka-placeholder-label{display:none!important}
+.ka-camera-card[data-team="rot"],.ka-camera-card[data-team="red"]{--ka-team:#a72d49}
+.ka-camera-card[data-team="blau"],.ka-camera-card[data-team="blue"]{--ka-team:#2668b2}
+.ka-camera-card[data-team="gruen"],.ka-camera-card[data-team="green"]{--ka-team:#1e875b}
+.ka-camera-card[data-team="gelb"],.ka-camera-card[data-team="yellow"]{--ka-team:#ae8428}
+.ka-camera-card[data-team="lila"],.ka-camera-card[data-team="purple"]{--ka-team:#8050b1}
+.ka-camera-card[data-team="orange"]{--ka-team:#a96232}
+body.ka-has-cameras[data-format]:not([data-format="blackstories"]):not([data-format="imposter"]):not([data-format="hotzone"]) .stage{padding-bottom:clamp(190px,26vh,300px)!important}
+
+/* Quizduell: großes Board und ein ruhiges, großes Fragefenster. */
+body[data-format="quizduell"] #hostView{background:radial-gradient(ellipse 80% 55% at 50% 0%,#172f4a55,transparent),#080e1c}
+body[data-format="quizduell"] #hostView .board-wrap{width:100%;max-width:1900px!important;padding:8px clamp(12px,2.5vw,48px) 18px!important}
+body[data-format="quizduell"] #hostView .board-wrap .grid{gap:9px!important}
+body[data-format="quizduell"] .cat-head{background:#94314c!important;border:1px solid #b35268!important;border-radius:14px!important;min-height:60px!important;font-size:clamp(13px,1.2vw,21px)!important;letter-spacing:.035em!important;box-shadow:none!important;text-shadow:none!important}
+body[data-format="quizduell"] .cell{background:linear-gradient(145deg,#28578a,#183454)!important;border:1px solid #416e9d!important;border-radius:13px!important;box-shadow:none!important;text-shadow:none!important;font-size:clamp(24px,2.8vw,50px)!important;padding:9px!important}
+body[data-format="quizduell"] .cell.done{background:#111d2d!important;border-color:#263950!important;opacity:.8}
+body[data-format="quizduell"] .qcard{width:min(1100px,90vw)!important;border-radius:20px!important;border:1px solid #71a5d2!important;background:linear-gradient(120deg,#203e61,#10243e)!important;box-shadow:0 24px 55px rgba(0,0,0,.48)!important}
+body[data-format="quizduell"] .qcard::before,body[data-format="quizduell"] .cat-head.enter::after{display:none!important}
+body[data-format="quizduell"] .qcard .qbody{padding:34px 45px!important}
+body[data-format="quizduell"] .qcard .qtext{font-family:Inter,system-ui,sans-serif!important;font-size:clamp(29px,3vw,47px)!important;font-weight:850!important;line-height:1.22!important;letter-spacing:-.025em!important}
+body[data-format="quizduell"] .qcard .qtitle{border-bottom:0!important}
+body[data-format="quizduell"] .qcard .qtitle .qpoints{animation:none!important;box-shadow:none!important;background:#d7ab5b!important;color:#13223b!important}
+body.ka-has-cameras[data-format="quizduell"] .ka-camera-layer{z-index:210!important}
+body.ka-has-cameras[data-format="quizduell"] .overlay{z-index:100!important;padding:clamp(60px,9vh,110px) 24px 28vh!important;align-items:center!important}
+body.ka-has-cameras[data-format="quizduell"] .qcard{max-height:61vh!important;overflow:auto!important}
+body.ka-has-cameras[data-format="quizduell"] .qcard .qimg{max-height:25vh!important;object-fit:contain!important}
+body[data-format="quizduell"] .resultbar.wrong{display:none!important}
+body[data-format="quizduell"] #hostView .scores{gap:9px!important;padding:8px 20px 12px!important}
+body[data-format="quizduell"] .score-card.team-score{border-radius:13px!important;min-width:0!important}
+body[data-format="quizduell"] .qd-team-select{border-radius:9px}
+
+/* Higher or Lower: Karten stehen im Mittelpunkt, die Skala bleibt frei. */
+body[data-format="higherlower"] .stage{padding-top:8px!important}
+body[data-format="higherlower"] .header{height:118px!important;min-height:118px!important;flex:0 0 118px!important;padding:0!important;position:relative!important}
+body[data-format="higherlower"] .header .title{visibility:hidden!important}
+body[data-format="higherlower"] .ka-top-logo{position:absolute!important;top:9px!important;left:50%!important;transform:translateX(-50%)!important;max-height:102px!important;max-width:340px!important;z-index:42!important}
+body[data-format="higherlower"] .ruler{padding:4px 45px 12px!important;position:relative!important;z-index:35!important}
+body[data-format="higherlower"] .ruler-line{height:2px!important;background:#b0c2dd!important}
+body[data-format="higherlower"] .ruler-ticks span{font-size:clamp(11px,.95vw,16px)!important}
+body[data-format="higherlower"] .canvas{width:96%!important;margin:0 auto!important;min-height:0!important;flex:1 1 auto!important;overflow:hidden!important}
+body[data-format="higherlower"] .pcard{border-radius:13px!important;box-shadow:0 9px 24px #0006!important;border:1px solid #425574!important}
+body[data-format="higherlower"] .pcard .lbl{font-size:clamp(11px,.82vw,15px)!important;line-height:1.15!important}
+body[data-format="higherlower"] .category-pill{background:#20324f!important;border:1px solid #3e618a!important;border-radius:999px!important}
+body[data-format="higherlower"] .timer-ring{filter:none!important;top:160px!important;bottom:auto!important;right:25px!important;width:104px!important;height:104px!important}
+body[data-format="higherlower"] .lives-strip{position:absolute!important;top:13px!important;left:0!important;right:0!important;justify-content:center!important;pointer-events:none!important;z-index:34!important;padding:0!important}
+body.ka-has-cameras[data-format="higherlower"] .lives-strip .player{display:none!important}
+body[data-format="higherlower"] #podest .pd-inner{background:#13243d!important;border:1px solid #527097!important;border-radius:18px!important;box-shadow:0 20px 50px #0008!important}
+
+/* Emoji: alle vier Felder groß und zentriert. */
+body[data-format="emoji"] .stage{justify-content:center!important}
+body[data-format="emoji"] .board{width:min(1280px,90vw)!important;justify-content:center!important;gap:clamp(12px,2vw,30px)!important;margin:1.5vh auto!important}
+body[data-format="emoji"] .slot{width:clamp(130px,14vw,245px)!important;height:clamp(130px,14vw,245px)!important;max-width:none!important;max-height:none!important;border-radius:22px!important;border:1px solid #516788!important;background:#172940!important;box-shadow:0 12px 30px #0005!important}
+body[data-format="emoji"] .slot.filled{border-color:#83a5d8!important;background:#1e3450!important;box-shadow:none!important}
+body[data-format="emoji"] .slot img.emoji{width:58%!important;height:58%!important;max-width:none!important;max-height:none!important}
+body[data-format="emoji"] .reveal-bar{width:min(1100px,85vw)!important}
+
+/* Wer ist das: Bild bleibt groß, ohne zusätzliche Spielerkarten. */
+body[data-format="weristdas"] .frame-outer{width:min(61vh,790px)!important;height:min(61vh,790px)!important;background:#14233a!important;border:1px solid #3e5775!important;padding:9px!important;border-radius:20px!important}
+body[data-format="weristdas"] .frame-wrap{border:0!important;border-radius:15px!important;background:#111c2e!important}
+body[data-format="weristdas"] .frame-wrap img{background:#111c2e!important}
+body[data-format="weristdas"] .points-bar{height:16px!important;border-radius:100px!important;border:0!important;background:#203451!important}
+
+/* Morph: das Hauptbild bleibt mittig, die zwei Einzelbilder füllen die Lösung. */
+body[data-format="morph"] .frame-outer{width:min(61vh,790px)!important;height:min(61vh,790px)!important;margin-top:1vh!important;background:#14233a!important;padding:8px!important;border:1px solid #3f5878!important;border-radius:21px!important}
+body[data-format="morph"] .frame-wrap{border:1px solid #4a668a!important;border-radius:15px!important;box-shadow:none!important}
+body[data-format="morph"] .reveal-half img{object-fit:cover!important;object-position:center!important}
+body[data-format="morph"] .reveal-half .tag{background:#172943!important;color:#fff!important;border-radius:999px!important}
+body[data-format="morph"] .buzz-order .head{background:#294465!important;letter-spacing:.02em!important}
+body[data-format="morph"] .points-bar{height:16px!important;border-radius:100px!important;border:0!important;background:#203451!important}
+
+/* Millionär: Frage und Antworten als klare, große Flächen. */
+body[data-format="millionaer"] .stage{padding:0 clamp(32px,6vw,115px)!important;margin-top:0!important}
+body[data-format="millionaer"] .qframe{width:100%!important;border:1px solid #665c9e!important;border-radius:20px!important;background:#1b203c!important;padding:24px!important;box-shadow:none!important}
+body[data-format="millionaer"] .qtext{background:#233150!important;border:1px solid #3e5275!important;border-radius:14px!important;font-size:clamp(30px,3.2vw,51px)!important;min-height:155px!important;text-shadow:none!important}
+body[data-format="millionaer"] .answers{gap:13px!important;margin-top:20px!important}
+body[data-format="millionaer"] .ans{background:#202c48!important;border:1px solid #4d6187!important;border-radius:13px!important;padding:20px 26px!important;min-height:98px!important}
+body[data-format="millionaer"] .ans .txt{font-size:clamp(20px,2vw,32px)!important;text-transform:none!important}
+body[data-format="millionaer"] .ans.correct{background:#1e584d!important;border-color:#44b697!important;box-shadow:none!important}
+
+/* Bluff-Quiz und Ausredenkönig: große Antwortkarten und klarer Fokus. */
+body[data-format="bluff-quiz"] .stage,body[data-format="ausreden"] .stage{padding-left:clamp(20px,3vw,65px)!important;padding-right:clamp(20px,3vw,65px)!important}
+body[data-format="bluff-quiz"] .grid,body[data-format="ausreden"] .grid{gap:clamp(10px,1.3vw,24px)!important}
+body[data-format="bluff-quiz"] .grid .karte,body[data-format="ausreden"] .grid .karte{background:#1a2d46!important;border:1px solid #496280!important;border-radius:17px!important;box-shadow:0 8px 24px rgba(0,0,0,.23)!important}
+body[data-format="bluff-quiz"] .phase-pill,body[data-format="ausreden"] .phase-pill{border-radius:999px!important;box-shadow:none!important}
+body[data-format="bluff-quiz"] .scoreboard,body[data-format="ausreden"] .scoreboard{gap:9px!important}
+
+/* Black Stories: Text im Fokus, Platz für Kameras links und rechts. */
+body[data-format="blackstories"] .stage{width:min(1400px,90vw)!important;max-width:none!important;top:12vh!important}
+body[data-format="blackstories"] .story-text{font-size:clamp(27px,3.2vw,48px)!important;line-height:1.3!important;max-width:1220px!important}
+body[data-format="blackstories"] .solution-box{background:#1c3049!important;border:1px solid #55738b!important;border-radius:17px!important;box-shadow:none!important}
+body[data-format="blackstories"] .scoreboard{display:none!important}
+
+/* Imposter: ruhige, konzentrierte Rollenbühne. */
+body[data-format="imposter"] .stage{justify-content:center!important;padding:0 4vw 25vh!important}
+body[data-format="imposter"] .phase-wrap{width:min(1250px,92vw)!important;margin-bottom:22px!important}
+body[data-format="imposter"] .phase-label{font-size:clamp(18px,2vw,32px)!important;color:#b5d0ea!important}
+body[data-format="imposter"] .result-banner{border:1px solid #526987!important;background:#1b2f48!important;border-radius:18px!important;font-size:clamp(22px,2vw,36px)!important;box-shadow:0 18px 45px #0005!important}
+body[data-format="imposter"] .tension{animation:none!important;opacity:.28!important}
+
+/* Hotzone: zwei breite, farblich eindeutig getrennte Spielflächen. */
+body[data-format="hotzone"] .board{width:100%!important;max-width:1860px!important;gap:16px!important}
+body[data-format="hotzone"] .team-panel{flex:1!important;min-width:0!important;border:2px solid #406084!important;border-radius:20px!important;background:#16273e!important;box-shadow:none!important;transform:none!important}
+body[data-format="hotzone"] .team-panel.red{border-color:#9e3b53!important;background:linear-gradient(140deg,#3d1e32,#182438)!important}
+body[data-format="hotzone"] .team-panel.blue{border-color:#316bab!important;background:linear-gradient(140deg,#193d68,#14283d)!important}
+body[data-format="hotzone"] .team-panel.turn-red,body[data-format="hotzone"] .team-panel.turn-blue{box-shadow:0 0 0 2px rgba(255,255,255,.12)!important}
+body[data-format="hotzone"] .team-name{border-radius:999px!important;box-shadow:none!important}
+
+/* Guess The Song: zurückhaltende Musikbühne mit großem Timer. */
+body[data-format="songerraten"] .song-stage{background:radial-gradient(ellipse 58% 55% at 50% 22%,#213d5b66,transparent 80%),#080e1c!important}
+body[data-format="songerraten"] .sound-disc i{background:linear-gradient(#a8c9ee,#4a80bd)!important}
+body[data-format="songerraten"] .song-timer{background:#15283f;border:1px solid #405e81;border-radius:999px;padding:8px 29px}
+body[data-format="songerraten"] .song-center h1{font-weight:900!important}
+
+@media(max-width:900px){
+  body[data-format="quizduell"] .cat-head{font-size:12px!important;min-height:42px!important}
+  body[data-format="quizduell"] .cell{font-size:25px!important}
+  body[data-format="emoji"] .slot{width:19vw!important;height:19vw!important}
+  body[data-format="morph"] .frame-outer,body[data-format="weristdas"] .frame-outer{width:min(53vh,75vw)!important;height:min(53vh,75vw)!important}
+  .ka-camera-name{font-size:10px!important;padding:5px 7px!important}
+}
+@media(prefers-reduced-motion:reduce){body[data-format] *,body[data-format] *::before,body[data-format] *::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}

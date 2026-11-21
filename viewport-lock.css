@@ -1,0 +1,29 @@
+/* Bildschirmansichten: eine feste Spielfläche ohne Dokument-Scrollen. */
+html:has(body.ka-game-viewport),body.ka-game-viewport{width:100%;height:100%;max-width:100%;overflow:hidden!important;overscroll-behavior:none}
+body.ka-game-viewport{position:relative;min-height:0!important}
+body.ka-game-viewport main{max-width:100%;min-width:0}
+/* Kamerakacheln dürfen niemals horizontales Dokument-Overflow erzeugen. */
+body.ka-game-viewport .ka-camera-layer{box-sizing:border-box!important;max-width:100vw!important;overflow:hidden!important;gap:0!important}
+body.ka-game-viewport .ka-camera-layer .ka-camera-card{box-sizing:border-box!important;min-width:0!important;max-width:100%!important;margin:0!important;overflow:hidden!important}
+body.ka-game-viewport .ka-camera-card video{width:100%!important;height:100%!important;object-fit:cover!important;transform:none!important}
+/* Reguläre, horizontale Kamerabühnen gleichmäßig einpassen. */
+body.ka-game-viewport .ka-camera-layer:not([data-format="imposter"]):not([data-format="blackstories"]):not([data-format="hotzone"]){left:0!important;right:0!important;width:100%!important;transform:none!important;display:flex!important;justify-content:center!important;align-items:stretch!important;flex-wrap:nowrap!important}
+body.ka-game-viewport .ka-camera-layer:not([data-format="imposter"]):not([data-format="blackstories"]):not([data-format="hotzone"])>.ka-camera-card{position:relative!important;left:auto!important;right:auto!important;flex:0 1 min(360px,calc(100vw / var(--ka-count,1)))!important;width:min(360px,calc(100vw / var(--ka-count,1)))!important;height:100%!important;aspect-ratio:auto!important;transform:none!important}
+/* Sonderbühnen bleiben bestehen, werden aber an die Viewportbreite gebunden. */
+body.ka-game-viewport .ka-camera-layer[data-format="imposter"],body.ka-game-viewport .ka-camera-layer[data-format="blackstories"]{max-width:100vw!important}
+@media(max-height:700px){body.ka-game-viewport .ka-camera-layer:not([data-format="imposter"]):not([data-format="blackstories"]):not([data-format="hotzone"]){height:min(22vh,154px)!important;max-height:22vh!important}}
+/* Kein zweites, nacktes Spieler-Namensband unter Guess The Song. */
+body[data-format="songerraten"] .song-roster{display:none!important}
+/* Guess The Song auf eine einzige Ansicht begrenzen. */
+body[data-format="songerraten"].ka-game-viewport .song-stage{height:100dvh!important;min-height:0!important;max-height:100dvh!important;overflow:hidden!important;display:flex!important;flex-direction:column!important;padding:clamp(12px,2vh,30px) clamp(14px,3vw,56px) calc(min(24vh,225px) + 10px)!important}
+body[data-format="songerraten"].ka-game-viewport .song-center{min-height:0!important;gap:clamp(5px,1vh,14px)!important;justify-content:center!important}
+body[data-format="songerraten"].ka-game-viewport .sound-disc{height:clamp(32px,8vh,100px)!important;flex-shrink:1!important}
+body[data-format="songerraten"].ka-game-viewport .song-center h1{font-size:clamp(24px,4vw,62px)!important}
+body[data-format="songerraten"].ka-game-viewport .song-timer{font-size:clamp(20px,2.6vw,40px)!important;padding:4px 18px!important}
+body[data-format="songerraten"].ka-game-viewport .song-play-panel{gap:clamp(4px,.8vh,10px)!important;margin:0!important;max-width:100%!important;min-height:0!important}
+body[data-format="songerraten"].ka-game-viewport #songSearch{padding:8px 12px!important;font-size:clamp(14px,1.5vw,18px)!important}
+body[data-format="songerraten"].ka-game-viewport .song-suggestions{max-height:min(15vh,108px)!important;overflow-y:auto!important}
+body[data-format="songerraten"].ka-game-viewport .song-stat{gap:5px!important;font-size:clamp(12px,1.3vw,18px)!important}
+body[data-format="songerraten"].ka-game-viewport .song-stat span{padding:5px 10px!important}
+body[data-format="songerraten"].ka-game-viewport #songLock,body[data-format="songerraten"].ka-game-viewport #songSkip{padding:8px 16px!important}
+@media(max-height:650px){body[data-format="songerraten"].ka-game-viewport .sound-disc{display:none!important}body[data-format="songerraten"].ka-game-viewport .eyebrow{margin:0!important}}

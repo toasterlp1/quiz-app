@@ -1,0 +1,14 @@
+TIMERSOUND
+
+Lege deine eigene MP3-Datei in diesen Ordner und nenne sie exakt:
+
+timer.mp3
+
+Pfad: assets/timer/timer.mp3
+
+Der Sound wird in allen Spielmodi über dieselbe Datei geladen.
+Der Ton wird in den letzten zehn Timer-Sekunden einmal pro Sekunde abgespielt.
+Am besten eignet sich daher ein kurzer Soundeffekt (ungefähr 0,2 bis 0,8 Sekunden).
+
+Danach den Ordner zusammen mit der restlichen Website veröffentlichen.
+Die Audiodatei ist nicht im ZIP enthalten.

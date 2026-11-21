@@ -1,0 +1,25 @@
+
+:root{--ka-team:#60a5fa}
+#ka-runtime-timer{position:fixed;z-index:9500;top:18px;left:18px;min-width:104px;padding:8px 12px;border-radius:14px;background:rgba(7,12,25,.82);border:1px solid rgba(255,255,255,.14);box-shadow:0 10px 30px rgba(0,0,0,.3);backdrop-filter:blur(12px);font:900 24px/1 Inter,system-ui,sans-serif;letter-spacing:.06em;color:#fff;text-align:center}
+#ka-runtime-timer[hidden]{display:none!important}
+#ka-runtime-timer.danger{border-color:rgba(255,70,90,.72);box-shadow:0 0 0 1px rgba(255,70,90,.25),0 0 28px rgba(255,35,65,.24);animation:kaTimerPulse .48s ease-in-out infinite alternate}
+@keyframes kaTimerPulse{to{transform:scale(1.035)}}
+#ka-team-strip{position:fixed;z-index:9400;top:72px;left:18px;display:flex;flex-direction:column;gap:6px;align-items:flex-start;justify-content:flex-start;max-width:260px;pointer-events:none}
+.ka-team-pill{display:flex;align-items:center;gap:7px;padding:6px 9px;border-radius:999px;background:rgba(7,12,25,.76);border:1px solid color-mix(in srgb,var(--team) 58%,transparent);box-shadow:0 8px 24px rgba(0,0,0,.28);font:800 11px/1 Inter,system-ui,sans-serif;letter-spacing:.04em;color:#fff;white-space:nowrap}
+.ka-team-dot{width:9px;height:9px;border-radius:50%;background:var(--team);box-shadow:0 0 14px var(--team)}
+.ka-team-score{font-weight:950;color:var(--team)}
+.ka-camera-card[data-team]{border-color:color-mix(in srgb,var(--ka-team) 72%,rgba(255,255,255,.12))!important;box-shadow:0 0 0 1px color-mix(in srgb,var(--ka-team) 24%,transparent),0 14px 34px rgba(0,0,0,.38)!important}
+.ka-camera-card[data-team]::after{content:attr(data-team-label);position:absolute;left:8px;top:8px;z-index:6;padding:4px 6px;border-radius:999px;background:color-mix(in srgb,var(--ka-team) 78%,#07101f);color:#fff;border:1px solid rgba(255,255,255,.22);font:900 8px/1 Inter,system-ui,sans-serif;letter-spacing:.09em}
+#ka-runtime-admin{position:fixed;z-index:12000;right:14px;bottom:14px;width:min(390px,calc(100vw - 28px));border-radius:16px;background:rgba(8,13,27,.96);border:1px solid rgba(255,255,255,.14);box-shadow:0 22px 70px rgba(0,0,0,.48);color:#fff;font-family:Inter,system-ui,sans-serif;overflow:hidden}
+#ka-runtime-admin .ka-rh{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:rgba(255,255,255,.045);font-size:11px;font-weight:950;letter-spacing:.12em}
+#ka-runtime-admin .ka-rbody{padding:10px 12px;display:grid;gap:10px}
+#ka-runtime-admin button,#ka-runtime-admin select,#ka-runtime-admin input{font:800 11px Inter,system-ui,sans-serif;color:#fff;background:#121b31;border:1px solid rgba(255,255,255,.13);border-radius:9px;padding:8px 9px}
+#ka-runtime-admin button{cursor:pointer}
+#ka-runtime-admin .ka-row{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+#ka-runtime-admin .ka-row>*{flex:1 1 auto}
+#ka-runtime-admin .ka-player-row{display:grid;grid-template-columns:minmax(90px,1fr) 118px;gap:7px;align-items:center}
+#ka-runtime-admin .ka-player-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;font-weight:800}
+#ka-runtime-admin .ka-mini{font-size:10px;color:#93a1ba}
+html.ka-stream #ka-runtime-admin,body.ka-stream #ka-runtime-admin{display:none!important}
+html.ka-stream #ka-runtime-timer,body.ka-stream #ka-runtime-timer{top:18px;left:18px}
+@media(max-width:900px){#ka-team-strip{top:58px;left:8px;max-width:220px}.ka-team-pill{font-size:9px;padding:5px 7px}#ka-runtime-timer{top:8px;left:8px;font-size:18px}}
